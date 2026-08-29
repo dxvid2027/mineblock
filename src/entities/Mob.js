@@ -25,10 +25,6 @@ export class Mob extends Entity {
     this.id = `${species.id}-${Math.random().toString(36).slice(2, 9)}`;
   }
 
-  distanceTo(pos) {
-    return Math.hypot(this.position.x - pos.x, this.position.y - pos.y, this.position.z - pos.z);
-  }
-
   update(dt, world, player) {
     if (!this.alive) return;
     const distToPlayer = player.alive ? this.distanceTo(player.position) : Infinity;

@@ -32,6 +32,42 @@ existing game.
   dimensions, so save files stay small regardless of how much of the
   infinite world has been explored.
 
+## How to finish the game
+
+MineBlock has a defined end: defeating **The Cinder Warden** in the Ember
+Expanse. The intended route, in order:
+
+1. **Wood** — punch a tree, make Planks → Sticks → a Workbench, then a full
+   set of Wood tools.
+2. **Stone** — mine Stone with the wood pickaxe for Cobbled Stone; build a
+   Smelter (8 Cobbled Stone) and Torches (Char Lump + Stick).
+3. **Ruddle** (wood pickaxe) → smelt Ruddle Chunks into ingots. First armor
+   tier, and the pickaxe that unlocks the next step.
+4. **Ferrite** and **Glint** (ruddle pickaxe). Glint Ingots feed the
+   Runeforge and the portal.
+5. **Aurum** and **Glimmerstone** (ferrite pickaxe). Glimmer Shards are
+   MineBlock's top gem — the "diamond" of this game — found below y≈20.
+   Glimmer gear is the strongest craftable set before the Ember Expanse.
+6. **Voidshard** (glimmer pickaxe), below y≈12 — the final tier.
+7. Build a **Runeforge** and apply Infusions to your gear (Rune Shards +
+   Infusion Dust cost XP levels).
+8. Craft a **Riftstone** (4 Voidshard + 4 Glimmer Shards + 2 Glint Ingots),
+   place it, right-click to open the portal to the **Ember Expanse**.
+9. Survive the Expanse and defeat **The Cinder Warden** (220 HP). It drops
+   the **Warden Core**, and the game shows its ending — after which the world
+   stays open to keep building in.
+
+`tests/progression.test.js` walks this whole chain against the real block,
+item and recipe tables, so a tier gate or recipe change that makes any step
+unreachable fails the test suite rather than stranding a player mid-game.
+
+### Equipment
+
+Armor comes in five tiers (Ruddle, Ferrite, Aurum, Glimmer, Voidshard), each
+with helmet / chest / legs / boots, plus an amulet slot (Warding or Vigor
+Amulet) and an offhand slot. Tools and weapons cover the same tiers across
+pickaxe, axe, shovel, sword and hoe.
+
 ## Running it
 
 ```bash

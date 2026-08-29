@@ -74,7 +74,7 @@ export const MOSSY_STONE = reg({
 // Ores & rare resources
 // ---------------------------------------------------------------------- //
 export const RUDDLE_ORE = reg({
-  name: 'ruddle_ore', displayName: 'Ruddle Ore', category: 'ore', hardness: 2, toolType: 'pickaxe', minToolTier: 1,
+  name: 'ruddle_ore', displayName: 'Ruddle Ore', category: 'ore', hardness: 2, toolType: 'pickaxe', minToolTier: 0,
   drops: 'ruddle_chunk', dropCount: [1, 2],
   texture: { all: T('speckle', '#8a8a8f', { grain: '#c17a4c' }) }
 });
@@ -84,17 +84,17 @@ export const GLINT_ORE = reg({
   texture: { all: T('speckle', '#8a8a8f', { grain: '#c9d6d6' }) }
 });
 export const FERRITE_ORE = reg({
-  name: 'ferrite_ore', displayName: 'Ferrite Ore', category: 'ore', hardness: 3, toolType: 'pickaxe', minToolTier: 2,
+  name: 'ferrite_ore', displayName: 'Ferrite Ore', category: 'ore', hardness: 3, toolType: 'pickaxe', minToolTier: 1,
   drops: 'ferrite_chunk', dropCount: [1, 2],
   texture: { all: T('speckle', '#8a8a8f', { grain: '#b8926a' }) }
 });
 export const AURUM_ORE = reg({
-  name: 'aurum_ore', displayName: 'Aurum Ore', category: 'ore', hardness: 3, toolType: 'pickaxe', minToolTier: 3,
+  name: 'aurum_ore', displayName: 'Aurum Ore', category: 'ore', hardness: 3, toolType: 'pickaxe', minToolTier: 2,
   drops: 'aurum_chunk', dropCount: [1, 2],
   texture: { all: T('speckle', '#8a8a8f', { grain: '#e8cf4f' }) }
 });
 export const GLIMMERSTONE_ORE = reg({
-  name: 'glimmerstone_ore', displayName: 'Glimmerstone Ore', category: 'ore', hardness: 4, toolType: 'pickaxe', minToolTier: 3,
+  name: 'glimmerstone_ore', displayName: 'Glimmerstone Ore', category: 'ore', hardness: 4, toolType: 'pickaxe', minToolTier: 2,
   drops: 'glimmer_shard', dropCount: [1, 1],
   texture: { all: T('speckle', '#6f7bb0', { grain: '#8fe9e0' }) }
 });

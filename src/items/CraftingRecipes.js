@@ -46,7 +46,10 @@ export const RECIPES = [
     { G: { id: 'glint_ingot' }, S: { id: 'glimmer_shard' }, I: { id: 'voidshard' }, V: { id: 'stone_bricks' }, B: { id: 'stone_bricks' } },
     { id: 'runeforge', count: 1 }),
   shapeless('glow_lantern', [{ id: 'glint_ingot', count: 4 }, { id: 'char_lump', count: 1 }], { id: 'glow_lantern', count: 1 }),
-  shapeless('riftstone', [{ id: 'voidshard', count: 4 }, { id: 'glimmer_shard', count: 4 }, { id: 'infusion_dust', count: 1 }], { id: 'riftstone', count: 1 }),
+  // Deliberately free of Infusion Dust: dust needs Sulfur, and the Riftstone
+  // is the only way into the Ember Expanse, so requiring it here made the
+  // portal — and the rest of the game — unreachable.
+  shapeless('riftstone', [{ id: 'voidshard', count: 4 }, { id: 'glimmer_shard', count: 4 }, { id: 'glint_ingot', count: 2 }], { id: 'riftstone', count: 1 }),
 
   // --- Farming ---
   shapeless('baked_loaf', [{ id: 'barley_grain', count: 3 }], { id: 'baked_loaf', count: 1, needsSmelter: true }),

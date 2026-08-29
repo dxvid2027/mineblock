@@ -27,6 +27,11 @@ export class Entity {
 
   get halfWidth() { return this.width / 2; }
 
+  /** Distance from this entity's feet to an arbitrary point. */
+  distanceTo(pos) {
+    return Math.hypot(this.position.x - pos.x, this.position.y - pos.y, this.position.z - pos.z);
+  }
+
   aabbAt(pos) {
     const hw = this.halfWidth;
     return {

@@ -26,6 +26,7 @@ import { SmelterUI } from '../ui/SmelterUI.js';
 import { RuneforgeUI } from '../ui/RuneforgeUI.js';
 import { PauseMenu } from '../ui/PauseMenu.js';
 import { DeathScreen } from '../ui/DeathScreen.js';
+import { VictoryScreen } from '../ui/VictoryScreen.js';
 import { LoadingScreen } from '../ui/LoadingScreen.js';
 
 registerBlockItems();
@@ -72,6 +73,9 @@ export class Game {
     globalEvents.on('ui:closeWorkstation', () => this._closeWorkstation());
     globalEvents.on('player:eat', (item) => this._eatItem(item));
     globalEvents.on('player:died', () => this._onPlayerDied());
+    globalEvents.on('entity:mobKilled', (species) => {
+      if (species.boss) this._onBossDefeated();
+    });
   }
 
   async start({ mode, name, seed }) {
@@ -100,6 +104,7 @@ export class Game {
       this.dayNight.deserialize(saveData);
       this.world.loadAllDimensions(saveData.chunkDiffs);
       this.playedTime = saveData.playedTime ?? 0;
+      this.bossDefeated = !!saveData.bossDefeated;
     } else {
       this.player.spawnPoint = { x: 8, y: 90, z: 8, dimension: 'overworld' };
     }
@@ -329,6 +334,23 @@ export class Game {
       this.pauseMenu = null;
       this.input.requestPointerLock();
     }
+  }
+
+  _onBossDefeated() {
+    if (this.state !== 'playing' || this.bossDefeated) return;
+    this.bossDefeated = true;
+    this.state = 'victory';
+    this.input.releasePointerLock();
+    this.victoryScreen = new VictoryScreen(this.uiRoot, {
+      stats: { days: this.dayNight.day, level: this.player.level },
+      onContinue: () => {
+        this.victoryScreen.destroy();
+        this.victoryScreen = null;
+        this.state = 'playing';
+        this.input.requestPointerLock();
+      }
+    });
+    this.save();
   }
 
   _onPlayerDied() {

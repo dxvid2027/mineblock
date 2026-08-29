@@ -59,6 +59,7 @@ export const SaveManager = {
       version: 1,
       seed: game.world.seed,
       playedTime: game.playedTime,
+      bossDefeated: !!game.bossDefeated,
       ...game.dayNight.serialize(), // { time, day }
       player: game.player.serialize(),
       chunkDiffs: game.world.serializeAllDimensions()
