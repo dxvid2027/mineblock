@@ -29,7 +29,7 @@ function createWindow() {
     height: 800,
     minWidth: 960,
     minHeight: 600,
-    backgroundColor: '#0a0d14',
+    backgroundColor: '#eef1f7',
     title: 'MineBlock',
     icon: path.join(__dirname, isDev ? '../src/public/icons/icon-512.png' : '../dist/icons/icon-512.png'),
     autoHideMenuBar: true,

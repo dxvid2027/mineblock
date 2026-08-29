@@ -33,7 +33,7 @@ export function renderSlotContent(el, stack) {
     if (def?.tool?.durability && def.tool.durability !== Infinity) {
       const bar = document.createElement('div');
       const pct = Math.max(0, stack.durability / def.tool.durability);
-      bar.style.cssText = `position:absolute;left:4px;right:4px;bottom:3px;height:3px;background:#000;border-radius:2px;overflow:hidden;`;
+      bar.style.cssText = `position:absolute;left:4px;right:4px;bottom:3px;height:3px;background:#c3cad8;border-radius:2px;overflow:hidden;`;
       const fill = document.createElement('div');
       fill.style.cssText = `height:100%;width:${pct * 100}%;background:${pct > 0.4 ? '#6fc274' : '#d1594f'};`;
       bar.appendChild(fill);

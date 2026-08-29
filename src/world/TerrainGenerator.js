@@ -9,6 +9,7 @@ import { BlockRegistry } from '../blocks/BlockRegistry.js';
 import { CHUNK_SIZE_X, CHUNK_SIZE_Z, CHUNK_HEIGHT } from './Chunk.js';
 
 const SEA_LEVEL = 62;
+const CAVE_THRESHOLD = 0.045; // ~3% of the underground carved — see isCave()
 
 const ORE_VEINS = [
   { block: 'char_seam', minY: 5, maxY: 100, chance: 0.02, size: [4, 9] },
@@ -43,6 +44,7 @@ export class TerrainGenerator {
     this.moistNoise = new Noise(mulberrySeed(seed, 3));
     this.caveNoise = new Noise(mulberrySeed(seed, 4));
     this.detailNoise = new Noise(mulberrySeed(seed, 5));
+    this.caveNoise2 = new Noise(mulberrySeed(seed, 6));
   }
 
   pickBiome(wx, wz) {
@@ -69,10 +71,20 @@ export class TerrainGenerator {
     return Math.round(biome.baseHeight + n * biome.heightVariance + detail);
   }
 
+  /**
+   * Carves winding tunnels by intersecting two independent 3D noise "sheets"
+   * (each |n| < threshold is a surface through the volume; where two such
+   * surfaces cross you get a 1D tube). A single sheet — the simpler approach —
+   * hollows out ~18% of the underground into vast connected voids you can see
+   * straight through; intersecting two keeps it near ~3%, i.e. actual caves.
+   */
   isCave(wx, wy, wz) {
     if (wy < 4 || wy > 110) return false;
-    const n = this.caveNoise.fbm3D(wx * 0.045, wy * 0.07, wz * 0.045, { octaves: 3, gain: 0.5 });
-    return Math.abs(n) < 0.045;
+    const opts = { octaves: 2, gain: 0.5 };
+    const a = this.caveNoise.fbm3D(wx * 0.028, wy * 0.045, wz * 0.028, opts);
+    if (Math.abs(a) > CAVE_THRESHOLD) return false;
+    const b = this.caveNoise2.fbm3D(wx * 0.028, wy * 0.045, wz * 0.028, opts);
+    return Math.abs(b) < CAVE_THRESHOLD;
   }
 
   generateChunk(chunk) {
@@ -93,16 +105,22 @@ export class TerrainGenerator {
         const surfaceId = BlockRegistry.idOf(surfaceBlock);
         const subsurfaceId = BlockRegistry.idOf(biome.subsurface);
 
+        // Depth below which caves may carve. Biomes whose surface/subsurface
+        // material *is* stone (mountains) would otherwise have their own
+        // ground carved away, opening holes straight through the landscape —
+        // so gate on depth rather than on the block being stone.
+        const crustBottom = height - biome.subsurfaceDepth;
+
         for (let y = 0; y < CHUNK_HEIGHT; y++) {
           let id = airId;
           if (y === 0) id = stoneId;
-          else if (y < height - biome.subsurfaceDepth) id = stoneId;
+          else if (y < crustBottom) id = stoneId;
           else if (y < height) id = subsurfaceId;
           else if (y === height) id = surfaceId;
           else if (y <= this.seaLevel && !this.isEmber) id = liquidId;
           else if (this.isEmber && y <= 24 && y > height) id = liquidId; // magma seas in low basins
 
-          if (id === stoneId && this.isCave(wx, y, wz)) id = airId;
+          if (y > 0 && y < crustBottom && id === stoneId && this.isCave(wx, y, wz)) id = airId;
           chunk.setBlock(lx, y, lz, id, { recordDiff: false });
         }
 

@@ -3,7 +3,7 @@ export class DeathScreen {
   constructor(root, { onRespawn } = {}) {
     this.el = document.createElement('div');
     this.el.className = 'mb-modal-backdrop interactive';
-    this.el.style.background = 'rgba(60,8,8,0.55)';
+    this.el.style.background = 'rgba(247, 226, 224, 0.72)';
     const panel = document.createElement('div');
     panel.className = 'mb-panel center-panel';
     panel.innerHTML = `<div class="mb-modal-title" style="color:var(--mb-bad);font-size:26px;">You Perished</div>

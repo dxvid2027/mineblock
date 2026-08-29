@@ -6,8 +6,8 @@ import { BlockRegistry } from '../blocks/BlockRegistry.js';
 import { getDimension } from '../dimensions/Dimensions.js';
 import { globalEvents } from '../core/EventBus.js';
 
-const CHUNKS_GENERATED_PER_FRAME = 2;
-const CHUNKS_MESHED_PER_FRAME = 2;
+const CHUNKS_GENERATED_PER_FRAME = 3;
+const CHUNKS_MESHED_PER_FRAME = 6;
 const UNLOAD_MARGIN = 3; // extra chunks kept loaded beyond render distance before eviction
 
 function worldToChunk(wx, wz) {
@@ -165,11 +165,17 @@ export class World {
     this.loadQueue = this.loadQueue.filter((c) => !c.generated);
   }
 
+  /**
+   * Records the current day/night brightness. Deliberately does NOT trigger
+   * remeshing: re-baking every loaded chunk each time the sun moved a little
+   * kept the mesh queue permanently saturated, so freshly streamed-in chunks
+   * waited behind hundreds of stale rebuilds and never got a mesh at all —
+   * which showed up in game as see-through holes in the landscape.
+   * Terrain light is baked once (see ChunkMesher); the visible day/night
+   * change comes from the sky, fog and scene lighting instead.
+   */
   setDayFactor(factor) {
-    if (Math.abs(factor - this.dayFactor) > 0.03) {
-      this.dayFactor = factor;
-      for (const key of this.chunks.keys()) this.meshQueue.add(key);
-    }
+    this.dayFactor = factor;
   }
 
   _loadChunk(cx, cz) {
@@ -262,7 +268,8 @@ export class World {
     const old = this._meshObjects.get(key);
     if (old) { this._chunkGroup.remove(old); old.traverse((o) => o.geometry?.dispose()); }
 
-    const { opaque, cutout, transparent } = buildChunkMesh(chunk, this, this.dimension.hasSkylight ? this.dayFactor : 1);
+    // Baked at full daylight — see setDayFactor() for why this is constant.
+    const { opaque, cutout, transparent } = buildChunkMesh(chunk, this, 1);
     const group = new THREE.Group();
     group.position.set(chunk.cx * CHUNK_SIZE_X, 0, chunk.cz * CHUNK_SIZE_Z);
     if (opaque) group.add(new THREE.Mesh(opaque, this._materials.opaque));

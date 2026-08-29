@@ -106,7 +106,7 @@ export class Game {
 
     const spawnX = saveData ? this.player.position.x : 8;
     const spawnZ = saveData ? this.player.position.z : 8;
-    this.world.forceLoad(spawnX, spawnZ, 2);
+    this.world.forceLoad(spawnX, spawnZ, 4);
     if (!saveData) {
       const topY = this.world.heightAtWorld(Math.floor(spawnX), Math.floor(spawnZ));
       this.player.position.set(spawnX, topY + 2, spawnZ);

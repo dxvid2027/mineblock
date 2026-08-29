@@ -1,19 +1,29 @@
 /* MineBlock UI — original "clean slab" design language.
-   Palette: deep slate backgrounds, warm amber accent, moss-green secondary.
-   All panels use flat colors + soft shadows, no borrowed iconography. */
+   Palette: light paper-white panels, warm amber accent, moss-green secondary.
+   All panels use flat colors + soft shadows, no borrowed iconography.
+
+   Two families of surface are in play and they must not be confused:
+   - Panels/menus sit on their own background  -> --mb-panel* + --mb-text
+   - HUD chips float over the 3D world, which  -> --mb-hud-bg (translucent
+     is bright, so they need their own tokens     white) + --mb-text
+   Everything below draws from these tokens; avoid hardcoding colors. */
 
 :root {
-  --mb-bg: #10141c;
-  --mb-panel: #1a2030;
-  --mb-panel-light: #232b40;
-  --mb-border: #323d57;
+  --mb-bg: #eef1f7;
+  --mb-panel: #ffffff;
+  --mb-panel-light: #f1f4fa;
+  --mb-panel-hover: #e4e9f4;
+  --mb-border: #ccd4e4;
   --mb-accent: #e8a33d;
   --mb-accent-dark: #b97e22;
-  --mb-good: #6fc274;
-  --mb-bad: #d1594f;
+  --mb-good: #4a9e52;
+  --mb-bad: #cf4b40;
   --mb-hunger: #d3922f;
-  --mb-text: #eef1f8;
-  --mb-text-dim: #9aa4bd;
+  --mb-text: #1b2233;
+  --mb-text-dim: #5d6780;
+  --mb-hud-bg: rgba(255, 255, 255, 0.82);
+  --mb-slot-bg: rgba(18, 24, 40, 0.05);
+  --mb-shadow: 0 12px 40px rgba(28, 38, 66, 0.18);
   --mb-font: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
@@ -95,7 +105,7 @@ button {
   cursor: pointer;
   transition: background 0.12s ease, transform 0.05s ease, border-color 0.12s ease;
 }
-.mb-btn:hover { background: #2b3350; border-color: var(--mb-accent-dark); }
+.mb-btn:hover { background: var(--mb-panel-hover); border-color: var(--mb-accent-dark); }
 .mb-btn:active { transform: translateY(1px) scale(0.99); }
 .mb-btn.primary { background: var(--mb-accent); border-color: var(--mb-accent-dark); color: #201502; }
 .mb-btn.primary:hover { background: #f2b055; }
@@ -111,7 +121,7 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(ellipse at 50% 20%, #26365a 0%, #0c0f16 70%);
+  background: radial-gradient(ellipse at 50% 20%, #ffffff 0%, #dfe6f2 70%);
 }
 #main-menu .logo {
   font-size: 64px;
@@ -119,7 +129,7 @@ button {
   letter-spacing: 0.04em;
   margin-bottom: 4px;
   color: var(--mb-text);
-  text-shadow: 0 4px 0 rgba(0,0,0,0.35);
+  text-shadow: 0 2px 0 rgba(28,38,66,0.12);
 }
 #main-menu .logo span { color: var(--mb-accent); }
 #main-menu .tagline {
@@ -148,14 +158,14 @@ button {
   background: var(--mb-panel);
   border: 1px solid var(--mb-border);
   border-radius: 10px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  box-shadow: var(--mb-shadow);
   padding: 24px;
 }
 .mb-modal-backdrop {
   position: absolute;
   inset: 0;
   pointer-events: auto;
-  background: rgba(6, 8, 14, 0.55);
+  background: rgba(226, 232, 243, 0.62);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -179,7 +189,7 @@ button {
   font-size: 14px;
   line-height: 1;
 }
-.mb-close:hover { background: var(--mb-bad); }
+.mb-close:hover { background: var(--mb-bad); border-color: var(--mb-bad); color: #fff; }
 
 /* ---------- Settings ---------- */
 .settings-row {
@@ -202,11 +212,13 @@ button {
   width: 18px; height: 18px;
   margin: -9px 0 0 -9px;
 }
+/* Dark bar + white halo: the world is bright in every biome and at night,
+   so a plain white crosshair would disappear against pale terrain. */
 .crosshair::before, .crosshair::after {
   content: '';
   position: absolute;
-  background: rgba(255,255,255,0.85);
-  box-shadow: 0 0 1px rgba(0,0,0,0.8);
+  background: rgba(24, 30, 46, 0.9);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.9);
 }
 .crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
 .crosshair::after { top: 8px; left: 0; height: 2px; width: 18px; }
@@ -237,7 +249,7 @@ button {
 .bar-icon {
   width: 20px;
   height: 20px;
-  filter: drop-shadow(1px 1.5px 0 rgba(0,0,0,0.55));
+  filter: drop-shadow(0 1px 1.5px rgba(28,38,66,0.35));
 }
 .bar-icon.heart path,
 .bar-icon.hunger rect,
@@ -247,16 +259,9 @@ button {
 }
 .bar-icon.heart.full { color: var(--mb-bad); }
 .bar-icon.heart.half { color: var(--mb-bad); opacity: 0.55; }
-.bar-icon.heart.empty { color: #402323; }
+.bar-icon.heart.empty { color: #e0c3c0; }
 .bar-icon.hunger.full { color: var(--mb-hunger); }
-.bar-icon.hunger.empty { color: #3a2c17; }
-
-.offhand-slot {
-  position: absolute;
-  right: 100%;
-  bottom: 0;
-  margin-right: 8px;
-}
+.bar-icon.hunger.empty { color: #e6d8bd; }
 
 .hotbar {
   display: flex;
@@ -265,7 +270,7 @@ button {
 }
 .hotbar-slot {
   width: 52px; height: 52px;
-  background: rgba(20,24,36,0.85);
+  background: var(--mb-hud-bg);
   border: 2px solid var(--mb-border);
   border-radius: 8px;
   position: relative;
@@ -275,12 +280,22 @@ button {
 }
 .hotbar-slot.active { border-color: var(--mb-accent); box-shadow: 0 0 0 2px rgba(232,163,61,0.35); }
 .hotbar-slot img, .hotbar-slot canvas { width: 36px; height: 36px; image-rendering: pixelated; }
+/* Must come after .hotbar-slot: the offhand reuses that class for its look,
+   and .hotbar-slot sets position:relative, which would otherwise win on
+   equal specificity and drop this slot out of place. */
+.offhand-slot {
+  position: absolute;
+  right: 100%;
+  bottom: 0;
+  margin-right: 8px;
+}
+
 .hotbar-slot .count {
   position: absolute;
   bottom: 2px; right: 4px;
   font-size: 11px;
   font-weight: 700;
-  text-shadow: 1px 1px 0 #000;
+  text-shadow: 0 0 3px #fff, 0 1px 0 #fff;
 }
 
 .dimension-tag, .biome-tag {
@@ -289,7 +304,7 @@ button {
   left: 16px;
   font-size: 12px;
   color: var(--mb-text-dim);
-  background: rgba(15,18,28,0.55);
+  background: var(--mb-hud-bg);
   padding: 4px 10px;
   border-radius: 6px;
 }
@@ -301,7 +316,7 @@ button {
   right: 16px;
   font-size: 12px;
   color: var(--mb-text-dim);
-  background: rgba(15,18,28,0.55);
+  background: var(--mb-hud-bg);
   padding: 4px 10px;
   border-radius: 6px;
 }
@@ -313,7 +328,7 @@ button {
   transform: translateX(-50%);
   font-size: 13px;
   color: var(--mb-text);
-  background: rgba(15,18,28,0.7);
+  background: var(--mb-hud-bg);
   padding: 6px 12px;
   border-radius: 6px;
 }
@@ -323,18 +338,18 @@ button {
   top: 14px;
   left: 16px;
   z-index: 5;
-  background: rgba(10, 12, 20, 0.72);
+  background: rgba(255,255,255,0.88);
   border: 1px solid var(--mb-border);
   border-radius: 6px;
   padding: 8px 12px;
   font-family: 'Consolas', 'Courier New', monospace;
   font-size: 12px;
   line-height: 1.55;
-  color: #d7ffb0;
+  color: #22402a;
   pointer-events: none;
   white-space: nowrap;
 }
-.debug-overlay b { color: var(--mb-accent); }
+.debug-overlay b { color: var(--mb-accent-dark); }
 
 .toast-log {
   position: absolute;
@@ -347,7 +362,7 @@ button {
 }
 .toast-log .toast {
   font-size: 12px;
-  background: rgba(15,18,28,0.7);
+  background: var(--mb-hud-bg);
   padding: 5px 10px;
   border-radius: 5px;
   color: var(--mb-text-dim);
@@ -368,7 +383,7 @@ button {
 }
 .inv-slot {
   width: 52px; height: 52px;
-  background: rgba(255,255,255,0.04);
+  background: var(--mb-slot-bg);
   border: 2px solid var(--mb-border);
   border-radius: 6px;
   position: relative;
@@ -381,12 +396,12 @@ button {
 .inv-slot canvas { width: 36px; height: 36px; image-rendering: pixelated; pointer-events: none; }
 .inv-slot .count {
   position: absolute; bottom: 2px; right: 4px;
-  font-size: 11px; font-weight: 700; text-shadow: 1px 1px 0 #000;
+  font-size: 11px; font-weight: 700; text-shadow: 0 0 3px #fff, 0 1px 0 #fff;
   pointer-events: none;
 }
 .inv-tooltip {
   position: absolute;
-  background: #0c0f18;
+  background: var(--mb-panel);
   border: 1px solid var(--mb-border);
   border-radius: 6px;
   padding: 8px 10px;

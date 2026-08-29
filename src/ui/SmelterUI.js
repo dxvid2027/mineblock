@@ -50,7 +50,7 @@ export class SmelterUI {
     col.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
 
     this.progressWrap = document.createElement('div');
-    this.progressWrap.style.cssText = 'width:64px;height:8px;background:#0008;border-radius:4px;overflow:hidden;';
+    this.progressWrap.style.cssText = 'width:64px;height:8px;background:var(--mb-slot-bg);border-radius:4px;overflow:hidden;';
     this.progressFill = document.createElement('div');
     this.progressFill.style.cssText = 'height:100%;width:0%;background:var(--mb-accent);';
     this.progressWrap.appendChild(this.progressFill);

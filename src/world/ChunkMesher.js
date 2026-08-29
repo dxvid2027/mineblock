@@ -4,9 +4,15 @@ import { BlockRegistry } from '../blocks/BlockRegistry.js';
 
 // Face definitions: each has a normal, the 4 corner offsets (in winding
 // order) and which axis-neighbor cell to test for culling/lighting.
+//
+// Winding matters: the opaque material renders FrontSide only, so a quad
+// whose corners wind the wrong way is culled and the block becomes
+// see-through from that direction. Each corner list below is ordered
+// counter-clockwise as seen from OUTSIDE the block, i.e. cross(c1-c0, c2-c1)
+// must equal `dir`.
 const FACES = [
-  { dir: [0, 1, 0], name: 'top', corners: [[0, 1, 0], [1, 1, 0], [1, 1, 1], [0, 1, 1]] },
-  { dir: [0, -1, 0], name: 'bottom', corners: [[0, 0, 1], [1, 0, 1], [1, 0, 0], [0, 0, 0]] },
+  { dir: [0, 1, 0], name: 'top', corners: [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0]] },
+  { dir: [0, -1, 0], name: 'bottom', corners: [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]] },
   { dir: [0, 0, 1], name: 'side', corners: [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]] }, // south (+z)
   { dir: [0, 0, -1], name: 'side', corners: [[1, 0, 0], [0, 0, 0], [0, 1, 0], [1, 1, 0]] }, // north (-z)
   { dir: [1, 0, 0], name: 'side', corners: [[1, 0, 1], [1, 0, 0], [1, 1, 0], [1, 1, 1]] }, // east (+x)
