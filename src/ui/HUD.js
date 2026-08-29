@@ -55,6 +55,12 @@ export class HUD {
     crosshair.style.transform = `scale(${1 + info.progress * 0.4})`;
   }
 
+  /** Hides the small dimension/biome tags while the fuller debug overlay (O) covers the same corner. */
+  setTagsVisible(visible) {
+    this.el.querySelector('#hud-dimension').style.display = visible ? '' : 'none';
+    this.el.querySelector('#hud-biome').style.display = visible ? '' : 'none';
+  }
+
   _refreshHotbar() {
     const inv = this.player.inventory;
     for (let i = 0; i < HOTBAR_SIZE; i++) {

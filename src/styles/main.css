@@ -280,6 +280,24 @@ button {
   border-radius: 6px;
 }
 
+.debug-overlay {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  z-index: 5;
+  background: rgba(10, 12, 20, 0.72);
+  border: 1px solid var(--mb-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #d7ffb0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.debug-overlay b { color: var(--mb-accent); }
+
 .toast-log {
   position: absolute;
   top: 70px;

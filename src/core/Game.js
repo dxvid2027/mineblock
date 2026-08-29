@@ -18,6 +18,8 @@ import { settings } from './Settings.js';
 import { SaveManager } from './SaveManager.js';
 import { globalEvents } from './EventBus.js';
 
+import { DebugRenderer } from '../render/DebugRenderer.js';
+import { DebugOverlay } from '../ui/DebugOverlay.js';
 import { HUD } from '../ui/HUD.js';
 import { InventoryScreen } from '../ui/InventoryScreen.js';
 import { SmelterUI } from '../ui/SmelterUI.js';
@@ -111,6 +113,8 @@ export class Game {
     }
 
     this.hud = new HUD(this.uiRoot, this.player);
+    this.debugRenderer = new DebugRenderer(this.scene);
+    this.debugOverlay = new DebugOverlay(this.uiRoot);
     this.loading.destroy();
     this.state = 'playing';
     this.canvas.addEventListener('click', this._requestLock);
@@ -155,6 +159,20 @@ export class Game {
       if (this.input.keyWasPressed(settings.get('keybinds')[`hotbar${i + 1}`])) this.player.inventory.selectHotbar(i);
     }
 
+    // Debug toggles: P = chunk boundaries, L = mob hitboxes, O = coordinates/info panel.
+    if (this.input.keyWasPressed('KeyP')) {
+      const on = this.debugRenderer.toggleChunkBounds();
+      globalEvents.emit('ui:toast', `Chunk borders ${on ? 'shown' : 'hidden'}`);
+    }
+    if (this.input.keyWasPressed('KeyL')) {
+      const on = this.debugRenderer.toggleHitboxes();
+      globalEvents.emit('ui:toast', `Mob hitboxes ${on ? 'shown' : 'hidden'}`);
+    }
+    if (this.input.keyWasPressed('KeyO')) {
+      const on = this.debugOverlay.toggle();
+      this.hud.setTagsVisible(!on);
+    }
+
     const uiOpen = !!this.activeWorkstation;
     if (!uiOpen) {
       this.controller.update(dt, this.world);
@@ -178,6 +196,9 @@ export class Game {
 
     this._updateEmberlight();
     this.hud.update(this.world, this.dayNight, this.interaction);
+    this.debugRenderer.update(this.world, this.entities, this.player);
+    this.debugOverlay.trackFrame(dt);
+    this.debugOverlay.update({ world: this.world, player: this.player, dayNight: this.dayNight, interaction: this.interaction, entities: this.entities, weather: this.weather });
 
     this._autosaveTimer -= dt;
     if (this._autosaveTimer <= 0) { this._autosaveTimer = AUTOSAVE_INTERVAL; this.save(); }
@@ -344,5 +365,7 @@ export class Game {
     this.weather?.dispose();
     this.sky?.dispose(this.scene);
     this.world?.dispose();
+    this.debugRenderer?.dispose();
+    this.debugOverlay?.dispose();
   }
 }
