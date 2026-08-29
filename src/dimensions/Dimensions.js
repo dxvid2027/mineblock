@@ -19,7 +19,8 @@ export const DIMENSIONS = {
       biomes: BIOMES,
       seaLevel: 62,
       liquidBlock: 'water',
-      isEmber: false
+      isEmber: false,
+      dimensionId: 'overworld'
     }),
     spawnMobCap: 24
   },
@@ -37,7 +38,8 @@ export const DIMENSIONS = {
       biomes: EMBER_BIOMES,
       seaLevel: 0,
       liquidBlock: 'magma',
-      isEmber: true
+      isEmber: true,
+      dimensionId: 'ember_expanse'
     }),
     spawnMobCap: 16
   }

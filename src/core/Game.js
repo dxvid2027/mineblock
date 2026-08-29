@@ -12,6 +12,7 @@ import { Interaction } from '../player/Interaction.js';
 import { SurvivalSystem } from '../player/SurvivalSystem.js';
 import { EntityManager } from '../entities/EntityManager.js';
 import { ItemRegistry } from '../items/ItemRegistry.js';
+import { rollLoot } from '../world/Structures.js';
 import { getInfusionLevel } from '../magic/InfusionSystem.js';
 
 import { settings } from './Settings.js';
@@ -106,15 +107,22 @@ export class Game {
       this.playedTime = saveData.playedTime ?? 0;
       this.bossDefeated = !!saveData.bossDefeated;
     } else {
-      this.player.spawnPoint = { x: 8, y: 90, z: 8, dimension: 'overworld' };
+      // Every new world starts somewhere different: the spawn column is
+      // derived from the seed and vetted for dry, walkable ground.
+      const spawn = this.world.generator.findSpawnColumn();
+      this.player.spawnPoint = { x: spawn.x + 0.5, y: spawn.y + 2, z: spawn.z + 0.5, dimension: 'overworld' };
+      this.player.position.set(spawn.x + 0.5, spawn.y + 2, spawn.z + 0.5);
     }
 
-    const spawnX = saveData ? this.player.position.x : 8;
-    const spawnZ = saveData ? this.player.position.z : 8;
+    const spawnX = this.player.position.x;
+    const spawnZ = this.player.position.z;
     this.world.forceLoad(spawnX, spawnZ, 4);
     if (!saveData) {
+      // Re-seat on the actually generated surface, which may differ slightly
+      // from the noise estimate once caves and structures are applied.
       const topY = this.world.heightAtWorld(Math.floor(spawnX), Math.floor(spawnZ));
       this.player.position.set(spawnX, topY + 2, spawnZ);
+      this.player.spawnPoint.y = topY + 2;
     }
 
     this.hud = new HUD(this.uiRoot, this.player);
@@ -279,14 +287,19 @@ export class Game {
     if (this.state === 'playing') this.input.requestPointerLock();
   }
 
+  /** Fills a structure's crate the first time it is opened, from its loot table. */
   _fillLoot(blockEntity, table) {
-    const rolls = table === 'buried_cache'
-      ? [['ferrite_chunk', 2, 4], ['glint_chunk', 1, 2], ['infusion_dust', 1, 2], ['baked_loaf', 1, 3]]
-      : [];
     let slotIdx = 0;
-    for (const [id, min, max] of rolls) {
-      if (!ItemRegistry.get(id)) continue;
-      blockEntity.items[slotIdx++] = { id, count: min + Math.floor(Math.random() * (max - min + 1)) };
+    for (const stack of rollLoot(table)) {
+      if (!ItemRegistry.get(stack.id)) continue;
+      if (slotIdx >= blockEntity.items.length) break;
+      const def = ItemRegistry.get(stack.id);
+      blockEntity.items[slotIdx++] = {
+        id: stack.id,
+        count: Math.min(stack.count, def.stackSize),
+        // Tools and armor need durability or they read as broken.
+        durability: def.tool?.durability ?? def.armor?.durability
+      };
     }
   }
 

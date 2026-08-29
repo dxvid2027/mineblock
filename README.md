@@ -27,6 +27,14 @@ existing game.
 - **All original graphics**: every block face and item icon is generated
   procedurally at startup by algorithmic pixel-art routines
   (`src/render/PatternDraw.js`) — nothing is loaded from an image file.
+- **Random world spawn**: every new world starts at a different, seed-derived
+  location, vetted to be dry land above sea level on reasonably even ground.
+- **Ten generated structures with loot**, spread across both dimensions and
+  both surface and underground: Wayside Shrine, Collapsed Watchtower, Desert
+  Cistern, Bog Hut and Frostwatch Camp above ground; Buried Cache, Miner's
+  Rest and Crystal Hollow below it; Ember Shrine and Cinder Vault in the
+  Ember Expanse. Each has its own loot table, rolled the first time you open
+  its Storage Crate.
 - **Save/load**: worlds persist as a diff from their deterministic seed
   (block edits, block-entity state, player/inventory data) across both
   dimensions, so save files stay small regardless of how much of the

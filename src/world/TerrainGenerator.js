@@ -7,6 +7,7 @@
 import { Noise, hash2D } from './noise/Noise.js';
 import { BlockRegistry } from '../blocks/BlockRegistry.js';
 import { CHUNK_SIZE_X, CHUNK_SIZE_Z, CHUNK_HEIGHT } from './Chunk.js';
+import { structuresFor } from './Structures.js';
 
 const SEA_LEVEL = 62;
 const CAVE_THRESHOLD = 0.045; // tunnels: ~3% of the underground — see isCave()
@@ -44,8 +45,10 @@ function mulberrySeed(seed, salt) {
 }
 
 export class TerrainGenerator {
-  constructor(seed, { biomes, biomeIds, oreVeins, seaLevel = SEA_LEVEL, liquidBlock = 'water', isEmber = false }) {
+  constructor(seed, { biomes, biomeIds, oreVeins, seaLevel = SEA_LEVEL, liquidBlock = 'water', isEmber = false, dimensionId = 'overworld' }) {
     this.seed = seed;
+    this.dimensionId = dimensionId;
+    this.structures = structuresFor(dimensionId);
     this.biomes = biomes;
     this.biomeIds = biomeIds;
     this.oreVeins = oreVeins ?? (isEmber ? EMBER_ORE_VEINS : ORE_VEINS);
@@ -117,6 +120,43 @@ export class TerrainGenerator {
     return n > CAVERN_THRESHOLD - verticalFalloff * 0.05;
   }
 
+  /**
+   * Picks a world spawn column for a fresh world. The origin is derived from
+   * the seed, so every world starts somewhere different, and candidates are
+   * rejected unless they are dry land comfortably above sea level and out of
+   * the swamp's standing water — otherwise players spawned in an ocean or
+   * inside a hillside. Uses only noise, so it needs no chunks loaded.
+   */
+  findSpawnColumn() {
+    const originX = (hash2D(this.seed, 0x5eed, 1) - 0.5) * 40000;
+    const originZ = (hash2D(0x5eed, this.seed, 2) - 0.5) * 40000;
+
+    // Spiral outward in 24-block steps until a column passes.
+    let best = null;
+    for (let i = 0; i < 600; i++) {
+      const angle = i * 2.399963; // golden angle — spreads samples evenly
+      const radius = 24 * Math.sqrt(i);
+      const wx = Math.round(originX + Math.cos(angle) * radius);
+      const wz = Math.round(originZ + Math.sin(angle) * radius);
+
+      const biome = this.pickBiome(wx, wz);
+      const height = Math.max(3, Math.min(CHUNK_HEIGHT - 20, this.heightAt(wx, wz, biome)));
+      if (height <= this.seaLevel + 1) continue;   // ocean / shoreline
+      if (biome.waterlogged) continue;             // swamp standing water
+      if (height > 100) continue;                  // sheer peak
+
+      // Prefer gentle ground: reject if the neighbourhood drops away sharply.
+      const around = [[3, 0], [-3, 0], [0, 3], [0, -3]]
+        .map(([dx, dz]) => this.heightAt(wx + dx, wz + dz, this.pickBiome(wx + dx, wz + dz)));
+      const spread = Math.max(...around) - Math.min(...around);
+      if (spread > 6) { best ??= { x: wx, z: wz, y: height }; continue; }
+
+      return { x: wx, z: wz, y: height };
+    }
+    // Nothing ideal nearby — take the least-bad candidate, or the origin.
+    return best ?? { x: Math.round(originX), z: Math.round(originZ), y: this.seaLevel + 4 };
+  }
+
   generateChunk(chunk) {
     const baseX = chunk.cx * CHUNK_SIZE_X;
     const baseZ = chunk.cz * CHUNK_SIZE_Z;
@@ -160,7 +200,7 @@ export class TerrainGenerator {
     }
 
     this._scatterOres(chunk, baseX, baseZ, stoneId);
-    this._maybeStructure(chunk, baseX, baseZ);
+    this._placeStructures(chunk, baseX, baseZ);
     chunk.generated = true;
   }
 
@@ -232,26 +272,82 @@ export class TerrainGenerator {
   }
 
   /** Rare underground "Buried Cache": a small hollow room with a loot crate. */
-  _maybeStructure(chunk, baseX, baseZ) {
-    const h = hash2D(chunk.cx, chunk.cz, this.seed ^ 0x1234abcd);
-    if (h > 0.02) return;
-    const cx = 4 + Math.floor(hash2D(chunk.cx, 1, this.seed) * 8);
-    const cz = 4 + Math.floor(hash2D(chunk.cz, 2, this.seed) * 8);
-    const cy = 10 + Math.floor(hash2D(chunk.cx, chunk.cz, this.seed) * 30);
-    const wallId = BlockRegistry.idOf(this.isEmber ? 'ashstone' : 'mossy_stone');
-    for (let dx = -2; dx <= 2; dx++) {
-      for (let dz = -2; dz <= 2; dz++) {
-        for (let dy = 0; dy <= 3; dy++) {
-          const x = cx + dx, y = cy + dy, z = cz + dz;
-          if (!chunk.inBounds(x, y, z)) continue;
-          const isShell = Math.abs(dx) === 2 || Math.abs(dz) === 2 || dy === 0 || dy === 3;
-          chunk.setBlock(x, y, z, isShell ? wallId : 0, { recordDiff: false });
-        }
+  /**
+   * Places at most one structure per chunk. Candidates are shuffled by a
+   * per-chunk hash so no single structure always wins, and each gets an
+   * independent rarity roll. Origins are constrained to local 4..11 so a
+   * structure's ±4 footprint stays inside this chunk — structures never span
+   * chunk borders, which keeps generation order-independent.
+   */
+  _placeStructures(chunk, baseX, baseZ) {
+    if (!this.structures.length) return;
+
+    // Salt every roll with the structure's index, not something derived from
+    // its name: two ids of equal length would otherwise hash identically and
+    // share both their rarity roll and their position, so one of the pair
+    // could never generate.
+    const order = this.structures
+      .map((struct, i) => ({ struct, i, key: hash2D(chunk.cx, chunk.cz, this.seed ^ (0x9e37 + i * 7919)) }))
+      .sort((a, b) => a.key - b.key);
+
+    for (const { struct, i } of order) {
+      const salt = this.seed ^ (0x1234abcd + i * 2654435761);
+      const roll = hash2D(chunk.cx * 31 + i, chunk.cz * 17 - i, salt);
+      if (roll > struct.chance) continue;
+
+      const lx = 4 + Math.floor(hash2D(chunk.cx, 1 + i * 13, salt) * 8);
+      const lz = 4 + Math.floor(hash2D(chunk.cz, 2 + i * 29, salt) * 8);
+      const wx = baseX + lx, wz = baseZ + lz;
+      const biome = this.pickBiome(wx, wz);
+      if (struct.biomes && !struct.biomes.includes(biome.id)) continue;
+
+      let originY;
+      if (struct.placement === 'surface') {
+        const ground = Math.max(3, Math.min(CHUNK_HEIGHT - 20, this.heightAt(wx, wz, biome)));
+        // Never perch a surface structure over open water or a magma sea.
+        if (!this.isEmber && ground <= this.seaLevel) continue;
+        originY = ground + 1;
+      } else {
+        const span = struct.maxY - struct.minY;
+        originY = struct.minY + Math.floor(hash2D(chunk.cx, chunk.cz, salt) * span);
       }
+
+      this._buildStructure(chunk, struct, lx, originY, lz, biome);
+      return; // one per chunk
     }
-    if (chunk.inBounds(cx, cy + 1, cz)) {
-      chunk.setBlock(cx, cy + 1, cz, BlockRegistry.idOf('storage_crate'), { recordDiff: false });
-      chunk.blockEntities.set(`${cx},${cy + 1},${cz}`, { type: 'storage', loot: 'buried_cache' });
-    }
+  }
+
+  _buildStructure(chunk, struct, lx, ly, lz, biome) {
+    let rngState = (hash2D(chunk.cx, chunk.cz, this.seed ^ 0xbeef) * 4294967296) >>> 0 || 1;
+    const rng = () => {
+      rngState ^= rngState << 13; rngState >>>= 0;
+      rngState ^= rngState >>> 17;
+      rngState ^= rngState << 5; rngState >>>= 0;
+      return rngState / 4294967296;
+    };
+
+    const put = (dx, dy, dz, id) => {
+      const x = lx + dx, y = ly + dy, z = lz + dz;
+      // Clipped rather than wrapped: a structure must never write into a
+      // neighbouring chunk, which may already be generated and meshed.
+      if (!chunk.inBounds(x, y, z)) return;
+      chunk.setBlock(x, y, z, id, { recordDiff: false });
+    };
+
+    const api = {
+      rng,
+      biome,
+      groundY: ly,
+      set: (dx, dy, dz, name) => put(dx, dy, dz, BlockRegistry.idOf(name)),
+      air: (dx, dy, dz) => put(dx, dy, dz, 0),
+      crate: (dx, dy, dz, lootId) => {
+        put(dx, dy, dz, BlockRegistry.idOf('storage_crate'));
+        const x = lx + dx, y = ly + dy, z = lz + dz;
+        if (!chunk.inBounds(x, y, z)) return;
+        chunk.blockEntities.set(`${x},${y},${z}`, { type: 'storage', loot: lootId });
+      }
+    };
+
+    struct.build(api);
   }
 }
