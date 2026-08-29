@@ -1,0 +1,95 @@
+// Biome catalog. Biomes are selected per-column from two independent noise
+// fields (temperature, moisture) plus the terrain height itself (mountains
+// are height-driven, not just temperature/moisture like the others) — see
+// TerrainGenerator.pickBiome().
+export const BIOMES = {
+  plains: {
+    id: 'plains', displayName: 'Sunlit Plains',
+    baseHeight: 68, heightVariance: 6,
+    surface: 'grassy_sod', subsurface: 'loam', subsurfaceDepth: 4,
+    treeType: null, treeDensity: 0.002,
+    plants: ['tall_grass', 'emberbloom'], plantDensity: 0.05,
+    weather: ['clear', 'rain'],
+    mobs: ['grazer', 'plodder'],
+    fogColor: 0xbfd6e8
+  },
+  forest: {
+    id: 'forest', displayName: 'Duskwood Forest',
+    baseHeight: 70, heightVariance: 8,
+    surface: 'grassy_sod', subsurface: 'loam', subsurfaceDepth: 4,
+    treeType: 'duskwood', treeDensity: 0.02,
+    plants: ['tall_grass'], plantDensity: 0.06,
+    weather: ['clear', 'rain'],
+    mobs: ['grazer', 'skitterling'],
+    fogColor: 0xa9c9a0
+  },
+  desert: {
+    id: 'desert', displayName: 'Sunbaked Desert',
+    baseHeight: 66, heightVariance: 4,
+    surface: 'sand', subsurface: 'sand', subsurfaceDepth: 5,
+    treeType: null, treeDensity: 0,
+    plants: ['spinepad'], plantDensity: 0.01,
+    weather: ['clear'],
+    mobs: ['sandcrawler'],
+    fogColor: 0xe8d9a0
+  },
+  mountains: {
+    id: 'mountains', displayName: 'Craggy Peaks',
+    baseHeight: 92, heightVariance: 34,
+    surface: 'stone', subsurface: 'stone', subsurfaceDepth: 6,
+    treeType: 'frostpine', treeDensity: 0.004,
+    plants: [], plantDensity: 0,
+    weather: ['clear', 'snow'],
+    mobs: ['plodder', 'skitterling'],
+    fogColor: 0xc7d4e0,
+    snowCap: 100
+  },
+  snow: {
+    id: 'snow', displayName: 'Frostbound Tundra',
+    baseHeight: 70, heightVariance: 7,
+    surface: 'snowcap', subsurface: 'frozen_loam', subsurfaceDepth: 4,
+    treeType: 'frostpine', treeDensity: 0.008,
+    plants: ['frostbell'], plantDensity: 0.02,
+    weather: ['snow'],
+    mobs: ['frostfang'],
+    fogColor: 0xe6f0f7
+  },
+  swamp: {
+    id: 'swamp', displayName: 'Murkroot Swamp',
+    baseHeight: 63, heightVariance: 3,
+    surface: 'bog_mud', subsurface: 'bog_mud', subsurfaceDepth: 5,
+    treeType: 'sablewood', treeDensity: 0.012,
+    plants: ['tall_grass'], plantDensity: 0.08,
+    weather: ['rain'],
+    mobs: ['bogcrawler', 'skitterling'],
+    fogColor: 0x7a8f6f,
+    waterlogged: true
+  }
+};
+
+// Ember Expanse (the alternate dimension) has its own small biome set.
+export const EMBER_BIOMES = {
+  ashfields: {
+    id: 'ashfields', displayName: 'Ashfields',
+    baseHeight: 40, heightVariance: 10,
+    surface: 'ashstone', subsurface: 'ashstone', subsurfaceDepth: 6,
+    treeType: null, treeDensity: 0,
+    plants: [], plantDensity: 0,
+    weather: ['clear'],
+    mobs: ['emberling', 'cindermaw'],
+    fogColor: 0x4a2a1f
+  },
+  cinderwood: {
+    id: 'cinderwood', displayName: 'Cinderwood Barrens',
+    baseHeight: 44, heightVariance: 14,
+    surface: 'ember_dust', subsurface: 'ashstone', subsurfaceDepth: 5,
+    treeType: 'cinder', treeDensity: 0.01,
+    plants: [], plantDensity: 0,
+    weather: ['clear'],
+    mobs: ['emberling'],
+    fogColor: 0x5c2a1f
+  }
+};
+
+export function biomeList() { return Object.values(BIOMES); }
+export function emberBiomeList() { return Object.values(EMBER_BIOMES); }

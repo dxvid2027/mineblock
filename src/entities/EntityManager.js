@@ -1,0 +1,205 @@
+import * as THREE from 'three';
+import { Mob } from './Mob.js';
+import { Entity } from './Entity.js';
+import { CREATURES } from './creatures/CreatureTypes.js';
+import { ItemRegistry } from '../items/ItemRegistry.js';
+import { getItemIconCanvas } from '../render/ItemIcons.js';
+import { globalEvents } from '../core/EventBus.js';
+import { getInfusionLevel } from '../magic/InfusionSystem.js';
+
+const SPAWN_INTERVAL = 2.5;
+const SPAWN_MIN_DIST = 12;
+const SPAWN_MAX_DIST = 28;
+const DESPAWN_DIST = 44;
+const DROP_LIFETIME = 300;
+const PICKUP_RADIUS = 1.3;
+const ATTACK_COOLDOWN_BASE = 0.55;
+
+function spriteForItem(itemId) {
+  const canvas = getItemIconCanvas(itemId);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.magFilter = THREE.NearestFilter;
+  const mat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(0.4, 0.4, 0.4);
+  return sprite;
+}
+
+/** A pickup lying in the world: a floating item icon the player can walk into. */
+class ItemDrop extends Entity {
+  constructor(itemId, count, position) {
+    super({ width: 0.35, height: 0.35, maxHealth: 1 });
+    this.itemId = itemId;
+    this.count = count;
+    this.position.set(position.x, position.y, position.z);
+    this.velocity.set((Math.random() - 0.5) * 1.5, 3, (Math.random() - 0.5) * 1.5);
+    this.age = 0;
+    this.mesh = spriteForItem(itemId);
+  }
+}
+
+export class EntityManager {
+  constructor(scene, world) {
+    this.scene = scene;
+    this.world = world;
+    this.mobs = [];
+    this.drops = [];
+    this.group = new THREE.Group();
+    this.group.name = 'entities';
+    scene.add(this.group);
+    this._spawnTimer = 0;
+    this._attackCooldown = 0;
+    this.bossAlive = false;
+
+    this._offDrop = globalEvents.on('item:drop', ({ id, count, position }) => this.spawnDrop(id, count, position));
+  }
+
+  setWorld(world) {
+    this.world = world;
+    for (const m of this.mobs) this.group.remove(m.mesh);
+    for (const d of this.drops) this.group.remove(d.mesh);
+    this.mobs = [];
+    this.drops = [];
+  }
+
+  spawnDrop(itemId, count, position) {
+    if (!ItemRegistry.get(itemId)) return;
+    const drop = new ItemDrop(itemId, count, position);
+    this.group.add(drop.mesh);
+    this.drops.push(drop);
+  }
+
+  spawnMob(speciesId, position) {
+    const species = CREATURES[speciesId];
+    if (!species) return null;
+    const mob = new Mob(species);
+    mob.position.set(position.x, position.y, position.z);
+    this.group.add(mob.mesh);
+    this.mobs.push(mob);
+    if (species.boss) this.bossAlive = true;
+    return mob;
+  }
+
+  update(dt, player, dayNight, input, interaction) {
+    this._updateSpawning(dt, player, dayNight);
+    this._updateMobs(dt, player);
+    this._updateDrops(dt, player);
+    this._updateCombat(dt, player, input, interaction);
+  }
+
+  _updateSpawning(dt, player, dayNight) {
+    this._spawnTimer -= dt;
+    if (this._spawnTimer > 0) return;
+    this._spawnTimer = SPAWN_INTERVAL;
+    if (this.mobs.length >= this.world.dimension.spawnMobCap) return;
+
+    const angle = Math.random() * Math.PI * 2;
+    const dist = SPAWN_MIN_DIST + Math.random() * (SPAWN_MAX_DIST - SPAWN_MIN_DIST);
+    const wx = Math.floor(player.position.x + Math.cos(angle) * dist);
+    const wz = Math.floor(player.position.z + Math.sin(angle) * dist);
+    const chunk = this.world.getChunk(Math.floor(wx / 16), Math.floor(wz / 16));
+    if (!chunk || !chunk.generated) return;
+
+    const biome = this.world.getBiomeAt(wx, wz);
+    const topY = this.world.heightAtWorld(wx, wz);
+    if (topY < 0) return;
+    const spawnY = topY + 1;
+    if (this.world.getBlockGlobal(wx, spawnY, wz) !== 0) return;
+    if (biome.waterlogged) return;
+
+    const isNight = dayNight.phase() === 'night';
+    const pool = biome.mobs.filter((id) => isNight || !CREATURES[id]?.hostile || this.world.dimension.id === 'ember_expanse');
+    if (!pool.length) return;
+    const speciesId = pool[Math.floor(Math.random() * pool.length)];
+    this.spawnMob(speciesId, { x: wx + 0.5, y: spawnY, z: wz + 0.5 });
+  }
+
+  _updateMobs(dt, player) {
+    for (let i = this.mobs.length - 1; i >= 0; i--) {
+      const mob = this.mobs[i];
+      mob.update(dt, this.world, player);
+      const dist = mob.distanceTo(player.position);
+      if (!mob.alive) {
+        this._killMob(mob, i);
+        continue;
+      }
+      if (dist > DESPAWN_DIST && !mob.species.boss) {
+        this.group.remove(mob.mesh);
+        this.mobs.splice(i, 1);
+      }
+    }
+  }
+
+  _killMob(mob, index) {
+    for (const drop of mob.species.drops) {
+      if (Math.random() > (drop.chance ?? 1)) continue;
+      const count = drop.count[0] + Math.floor(Math.random() * (drop.count[1] - drop.count[0] + 1));
+      if (count > 0) this.spawnDrop(drop.id, count, { x: mob.position.x, y: mob.position.y + 0.5, z: mob.position.z });
+    }
+    this.group.remove(mob.mesh);
+    this.mobs.splice(index, 1);
+    if (mob.species.boss) this.bossAlive = false;
+    globalEvents.emit('entity:mobKilled', mob.species);
+  }
+
+  _updateDrops(dt, player) {
+    for (let i = this.drops.length - 1; i >= 0; i--) {
+      const drop = this.drops[i];
+      drop.age += dt;
+      drop.physicsStep(dt, this.world);
+      drop.mesh.position.set(drop.position.x, drop.position.y + Math.sin(drop.age * 3) * 0.08 + 0.2, drop.position.z);
+
+      if (drop.age > DROP_LIFETIME) {
+        this.group.remove(drop.mesh);
+        this.drops.splice(i, 1);
+        continue;
+      }
+      if (drop.distanceTo(player.position) < PICKUP_RADIUS) {
+        const leftover = player.inventory.addItem(drop.itemId, drop.count);
+        if (leftover < drop.count) {
+          globalEvents.emit('ui:toast', `+${drop.count - leftover} ${ItemRegistry.get(drop.itemId)?.displayName ?? drop.itemId}`);
+        }
+        if (leftover > 0) { drop.count = leftover; continue; }
+        this.group.remove(drop.mesh);
+        this.drops.splice(i, 1);
+      }
+    }
+  }
+
+  _updateCombat(dt, player, input, interaction) {
+    if (this._attackCooldown > 0) this._attackCooldown -= dt;
+    if (!input.mouseButtons.has(0) || this._attackCooldown > 0) return;
+
+    const camera = interaction.camera;
+    const forward = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    const blockDist = interaction.target
+      ? Math.hypot(interaction.target.x + 0.5 - camera.position.x, interaction.target.y + 0.5 - camera.position.y, interaction.target.z + 0.5 - camera.position.z)
+      : Infinity;
+
+    let best = null, bestDist = Infinity;
+    for (const mob of this.mobs) {
+      const toMob = new THREE.Vector3(mob.position.x - camera.position.x, mob.position.y + mob.height * 0.5 - camera.position.y, mob.position.z - camera.position.z);
+      const dist = toMob.length();
+      if (dist > 4.5 || dist > blockDist) continue;
+      const angle = toMob.normalize().angleTo(forward);
+      if (angle < 0.28 && dist < bestDist) { best = mob; bestDist = dist; }
+    }
+    if (!best) return;
+
+    const heldSlot = player.inventory.getSelected();
+    const heldItem = heldSlot ? ItemRegistry.get(heldSlot.id) : null;
+    const damage = (heldItem?.tool?.damage ?? 1) + getInfusionLevel(heldSlot, 'keenedge');
+    const knockback = new THREE.Vector3(best.position.x - player.position.x, 0.3, best.position.z - player.position.z).normalize().multiplyScalar(5);
+
+    best.damage(damage);
+    best.velocity.x += knockback.x; best.velocity.y += 3; best.velocity.z += knockback.z;
+    this._attackCooldown = heldItem?.tool?.type === 'sword' ? ATTACK_COOLDOWN_BASE * 0.7 : ATTACK_COOLDOWN_BASE;
+    if (!best.alive) player.addXp(best.species.xp ?? 2);
+  }
+
+  dispose() {
+    this._offDrop?.();
+    this.scene.remove(this.group);
+  }
+}

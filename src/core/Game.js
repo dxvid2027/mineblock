@@ -1,0 +1,348 @@
+import * as THREE from 'three';
+import '../blocks/BlockTypes.js';
+import { registerBlockItems } from '../items/ItemTypes.js';
+
+import { World } from '../world/World.js';
+import { DayNightCycle } from '../world/DayNightCycle.js';
+import { WeatherSystem } from '../world/WeatherSystem.js';
+import { SkyDome } from '../render/SkyDome.js';
+import { Player } from '../entities/Player.js';
+import { PlayerController } from '../player/PlayerController.js';
+import { Interaction } from '../player/Interaction.js';
+import { SurvivalSystem } from '../player/SurvivalSystem.js';
+import { EntityManager } from '../entities/EntityManager.js';
+import { ItemRegistry } from '../items/ItemRegistry.js';
+import { getInfusionLevel } from '../magic/InfusionSystem.js';
+
+import { settings } from './Settings.js';
+import { SaveManager } from './SaveManager.js';
+import { globalEvents } from './EventBus.js';
+
+import { HUD } from '../ui/HUD.js';
+import { InventoryScreen } from '../ui/InventoryScreen.js';
+import { SmelterUI } from '../ui/SmelterUI.js';
+import { RuneforgeUI } from '../ui/RuneforgeUI.js';
+import { PauseMenu } from '../ui/PauseMenu.js';
+import { DeathScreen } from '../ui/DeathScreen.js';
+import { LoadingScreen } from '../ui/LoadingScreen.js';
+
+registerBlockItems();
+
+const AUTOSAVE_INTERVAL = 90;
+const OTHER_DIMENSION = { overworld: 'ember_expanse', ember_expanse: 'overworld' };
+
+/**
+ * Owns the whole in-game session: scene/renderer, world, player, all
+ * gameplay systems, and the coordination of which UI panel (if any) is
+ * currently open. MainMenu hands off to `new Game(...)` + `start()`.
+ */
+export class Game {
+  constructor(canvas, uiRoot, input) {
+    this.canvas = canvas;
+    this.uiRoot = uiRoot;
+    this.input = input;
+
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    this.scene = new THREE.Scene();
+    this.camera = new THREE.PerspectiveCamera(settings.get('fov'), window.innerWidth / window.innerHeight, 0.08, 500);
+    this.fog = new THREE.Fog(0xbfe3f2, 40, 140);
+    this.scene.fog = this.fog;
+
+    this.clock = new THREE.Clock();
+    this.playedTime = 0;
+    this.state = 'idle';
+    this.activeWorkstation = null; // { type, ui }
+
+    this._onResize = () => this._handleResize();
+    window.addEventListener('resize', this._onResize);
+
+    this._emberLight = new THREE.PointLight(0xff8a3f, 0, 8);
+    this.scene.add(this._emberLight);
+
+    this._bindEvents();
+  }
+
+  _bindEvents() {
+    globalEvents.on('ui:openWorkstation', (info) => this._openWorkstation(info));
+    globalEvents.on('ui:closeWorkstation', () => this._closeWorkstation());
+    globalEvents.on('player:eat', (item) => this._eatItem(item));
+    globalEvents.on('player:died', () => this._onPlayerDied());
+  }
+
+  async start({ mode, name, seed }) {
+    this.saveName = name ?? 'New World';
+    this.loading = new LoadingScreen(this.uiRoot, mode === 'load' ? 'Loading world…' : 'Carving a new world…');
+    await new Promise((r) => setTimeout(r, 20)); // let the loading screen paint
+
+    let saveData = null;
+    if (mode === 'load') saveData = await SaveManager.load(name);
+
+    this.seed = saveData?.seed ?? seed ?? Math.floor(Math.random() * 2 ** 31);
+    this.dimensionId = saveData?.player?.dimension ?? 'overworld';
+
+    this.world = new World(this.scene, this.seed, this.dimensionId);
+    this.dayNight = new DayNightCycle(this.scene);
+    this.weather = new WeatherSystem(this.scene);
+    this.sky = new SkyDome(this.scene);
+    this.player = new Player();
+    this.entities = new EntityManager(this.scene, this.world);
+    this.controller = new PlayerController(this.player, this.camera, this.input);
+    this.interaction = new Interaction(this.world, this.camera, this.input, this.player);
+    this.survival = new SurvivalSystem(this.player);
+
+    if (saveData) {
+      this.player.deserialize(saveData.player);
+      this.dayNight.deserialize(saveData);
+      this.world.loadAllDimensions(saveData.chunkDiffs);
+      this.playedTime = saveData.playedTime ?? 0;
+    } else {
+      this.player.spawnPoint = { x: 8, y: 90, z: 8, dimension: 'overworld' };
+    }
+
+    const spawnX = saveData ? this.player.position.x : 8;
+    const spawnZ = saveData ? this.player.position.z : 8;
+    this.world.forceLoad(spawnX, spawnZ, 2);
+    if (!saveData) {
+      const topY = this.world.heightAtWorld(Math.floor(spawnX), Math.floor(spawnZ));
+      this.player.position.set(spawnX, topY + 2, spawnZ);
+    }
+
+    this.hud = new HUD(this.uiRoot, this.player);
+    this.loading.destroy();
+    this.state = 'playing';
+    this.canvas.addEventListener('click', this._requestLock);
+    this.input.requestPointerLock();
+    this._autosaveTimer = AUTOSAVE_INTERVAL;
+    this._handleResize();
+    this._loop();
+  }
+
+  _requestLock = () => {
+    if (this.state === 'playing') this.input.requestPointerLock();
+  };
+
+  _handleResize() {
+    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.fov = settings.get('fov');
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  _loop = () => {
+    this._raf = requestAnimationFrame(this._loop);
+    const dt = Math.min(0.1, this.clock.getDelta());
+
+    if (this.state === 'playing') this._update(dt);
+    this.renderer.render(this.scene, this.camera);
+    this.input.endFrame();
+  };
+
+  _update(dt) {
+    this.playedTime += dt;
+
+    if (this.input.keyWasPressed(settings.get('keybinds').pause)) {
+      if (this.activeWorkstation) this._closeWorkstation();
+      else this._togglePause();
+      return;
+    }
+    if (!this.activeWorkstation && this.input.keyWasPressed(settings.get('keybinds').inventory)) {
+      this._toggleInventory();
+    }
+    for (let i = 0; i < 9; i++) {
+      if (this.input.keyWasPressed(settings.get('keybinds')[`hotbar${i + 1}`])) this.player.inventory.selectHotbar(i);
+    }
+
+    const uiOpen = !!this.activeWorkstation;
+    if (!uiOpen) {
+      this.controller.update(dt, this.world);
+      this.interaction.update(dt);
+      this.entities.update(dt, this.player, this.dayNight, this.input, this.interaction);
+    } else {
+      this.player.velocity.set(0, this.player.velocity.y, 0);
+      this.activeWorkstation.ui.update?.(dt);
+    }
+
+    this.survival.update(dt, this.world);
+    this.dayNight.update(dt, this.world.dimension);
+    this.world.setDayFactor(this.dayNight.dayFactor);
+    this.world.update(this.player.position.x, this.player.position.z, settings.get('renderDistance'));
+    this.weather.update(dt, this.player, this.world);
+    this.sky.update(this.camera, this.dayNight);
+    this.fog.color.copy(this.dayNight.sky.bottom);
+    this.fog.near = this.world.dimension.fogNear;
+    this.fog.far = this.world.dimension.fogFar;
+    this.renderer.setClearColor(this.dayNight.sky.bottom);
+
+    this._updateEmberlight();
+    this.hud.update(this.world, this.dayNight, this.interaction);
+
+    this._autosaveTimer -= dt;
+    if (this._autosaveTimer <= 0) { this._autosaveTimer = AUTOSAVE_INTERVAL; this.save(); }
+  }
+
+  _updateEmberlight() {
+    let tier = 0;
+    const held = this.player.inventory.getSelected();
+    if (held) tier = Math.max(tier, getInfusionLevel(held, 'emberlight'));
+    for (const item of Object.values(this.player.inventory.equipment)) tier = Math.max(tier, getInfusionLevel(item, 'emberlight'));
+    this._emberLight.intensity = tier > 0 ? 1.4 : 0;
+    this._emberLight.position.copy(this.camera.position);
+  }
+
+  // ------------------------------------------------------------- eating
+  _eatItem(item) {
+    const slotIndex = this.player.inventory.selectedHotbar;
+    const slot = this.player.inventory.slots[slotIndex];
+    if (!slot) return;
+    this.player.eat(item.food);
+    this.player.inventory.removeFromSlot(slotIndex, 1);
+  }
+
+  // ------------------------------------------------------------- workstations
+  _toggleInventory() {
+    if (this.activeWorkstation?.type === 'inventory') { this._closeWorkstation(); return; }
+    if (this.activeWorkstation) this._closeWorkstation();
+    const ui = new InventoryScreen(this.uiRoot, this.player, { craftSize: 2, title: 'Inventory' });
+    this.activeWorkstation = { type: 'inventory', ui };
+    this.input.releasePointerLock();
+  }
+
+  _openWorkstation({ type, pos }) {
+    if (this.activeWorkstation) this._closeWorkstation();
+    this.input.releasePointerLock();
+
+    if (type === 'crafting') {
+      const ui = new InventoryScreen(this.uiRoot, this.player, { craftSize: 3, showRecipes: true, title: 'Workbench' });
+      this.activeWorkstation = { type, ui };
+    } else if (type === 'smelter') {
+      const be = this.world.getBlockEntity(pos.x, pos.y, pos.z) ?? {};
+      const ui = new SmelterUI(this.uiRoot, this.player, be, (state) => this.world.setBlockEntity(pos.x, pos.y, pos.z, state));
+      this.activeWorkstation = { type, ui, pos };
+    } else if (type === 'runeforge') {
+      const ui = new RuneforgeUI(this.uiRoot, this.player);
+      this.activeWorkstation = { type, ui };
+    } else if (type === 'storage') {
+      let be = this.world.getBlockEntity(pos.x, pos.y, pos.z);
+      if (!be) { be = { type: 'storage' }; this.world.setBlockEntity(pos.x, pos.y, pos.z, be); }
+      if (!be.items) be.items = new Array(27).fill(null);
+      if (be.loot) { this._fillLoot(be, be.loot); be.loot = null; }
+      const ui = new InventoryScreen(this.uiRoot, this.player, {
+        craftSize: 0, title: 'Storage Crate',
+        externalContainer: { name: 'Storage', slots: be.items, onChange: () => {} }
+      });
+      this.activeWorkstation = { type, ui, pos };
+    } else if (type === 'bed') {
+      this._sleep();
+      this.input.requestPointerLock();
+      return;
+    } else if (type === 'portal') {
+      this._travelDimension();
+      this.input.requestPointerLock();
+      return;
+    }
+  }
+
+  _closeWorkstation() {
+    if (!this.activeWorkstation) return;
+    this.activeWorkstation.ui.destroy();
+    this.activeWorkstation = null;
+    if (this.state === 'playing') this.input.requestPointerLock();
+  }
+
+  _fillLoot(blockEntity, table) {
+    const rolls = table === 'buried_cache'
+      ? [['ferrite_chunk', 2, 4], ['glint_chunk', 1, 2], ['infusion_dust', 1, 2], ['baked_loaf', 1, 3]]
+      : [];
+    let slotIdx = 0;
+    for (const [id, min, max] of rolls) {
+      if (!ItemRegistry.get(id)) continue;
+      blockEntity.items[slotIdx++] = { id, count: min + Math.floor(Math.random() * (max - min + 1)) };
+    }
+  }
+
+  _sleep() {
+    const phase = this.dayNight.phase();
+    if (phase !== 'night') { globalEvents.emit('ui:toast', 'You can only sleep at night.'); return; }
+    this.dayNight.setTime(0.26);
+    this.player.heal(this.player.maxHealth);
+    globalEvents.emit('ui:toast', 'You wake up feeling refreshed.');
+  }
+
+  _travelDimension() {
+    const nextId = OTHER_DIMENSION[this.world.dimensionId];
+    this.world.setDimension(nextId);
+    this.player.dimension = nextId;
+    this.entities.setWorld(this.world);
+    const x = Math.floor(this.player.position.x), z = Math.floor(this.player.position.z);
+    this.world.forceLoad(x, z, 2);
+    const topY = this.world.heightAtWorld(x, z);
+    this.player.position.set(x + 0.5, topY + 2, z + 0.5);
+    this.player.velocity.set(0, 0, 0);
+    globalEvents.emit('ui:toast', `You step into ${this.world.dimension.displayName}.`);
+
+    if (nextId === 'ember_expanse' && !this.entities.bossAlive && this.player.level >= 5 && Math.random() < 0.5) {
+      const angle = Math.random() * Math.PI * 2;
+      const bx = x + Math.cos(angle) * 18, bz = z + Math.sin(angle) * 18;
+      const by = this.world.heightAtWorld(Math.floor(bx), Math.floor(bz)) + 1;
+      this.entities.spawnMob('cinder_warden', { x: bx, y: by, z: bz });
+      globalEvents.emit('ui:toast', 'You sense a monstrous presence nearby...');
+    }
+  }
+
+  // ------------------------------------------------------------- pause/death
+  _togglePause() {
+    if (this.state === 'playing') {
+      this.state = 'paused';
+      this.input.releasePointerLock();
+      this.pauseMenu = new PauseMenu(this.uiRoot, {
+        onResume: () => this._togglePause(),
+        onSaveQuit: () => this._saveAndQuit()
+      });
+    } else if (this.state === 'paused') {
+      this.state = 'playing';
+      this.pauseMenu.destroy();
+      this.pauseMenu = null;
+      this.input.requestPointerLock();
+    }
+  }
+
+  _onPlayerDied() {
+    if (this.state !== 'playing') return;
+    this.state = 'dead';
+    this.input.releasePointerLock();
+    this.deathScreen = new DeathScreen(this.uiRoot, {
+      onRespawn: () => {
+        this.player.respawn();
+        this.deathScreen.destroy();
+        this.deathScreen = null;
+        this.state = 'playing';
+        this.input.requestPointerLock();
+      }
+    });
+  }
+
+  async save() {
+    if (!this.world) return;
+    const payload = SaveManager.serialize(this);
+    await SaveManager.write(this.saveName, payload);
+  }
+
+  async _saveAndQuit() {
+    await this.save();
+    this.dispose();
+    window.location.reload();
+  }
+
+  dispose() {
+    cancelAnimationFrame(this._raf);
+    window.removeEventListener('resize', this._onResize);
+    this.canvas.removeEventListener('click', this._requestLock);
+    this.entities?.dispose();
+    this.weather?.dispose();
+    this.sky?.dispose(this.scene);
+    this.world?.dispose();
+  }
+}
