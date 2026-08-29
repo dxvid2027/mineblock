@@ -12,6 +12,7 @@ export class Inventory {
   constructor() {
     this.slots = new Array(MAIN_SLOTS).fill(null).map(emptySlot);
     this.equipment = { helmet: null, chest: null, legs: null, boots: null, amulet: null };
+    this.offhand = null; // { id, count, durability, infusions } — holds any item, not just armor
     this.selectedHotbar = 0;
     this.craftingGrid = new Array(9).fill(null);
   }
@@ -141,6 +142,7 @@ export class Inventory {
     return {
       slots: this.slots,
       equipment: this.equipment,
+      offhand: this.offhand,
       selectedHotbar: this.selectedHotbar
     };
   }
@@ -149,6 +151,7 @@ export class Inventory {
     if (!data) return;
     this.slots = (data.slots ?? []).concat(new Array(MAIN_SLOTS)).slice(0, MAIN_SLOTS).map((s) => s ?? null);
     this.equipment = { helmet: null, chest: null, legs: null, boots: null, amulet: null, ...(data.equipment ?? {}) };
+    this.offhand = data.offhand ?? null;
     this.selectedHotbar = data.selectedHotbar ?? 0;
     globalEvents.emit('inventory:changed');
   }

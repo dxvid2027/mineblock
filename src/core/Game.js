@@ -152,7 +152,8 @@ export class Game {
       else this._togglePause();
       return;
     }
-    if (!this.activeWorkstation && this.input.keyWasPressed(settings.get('keybinds').inventory)) {
+    const canToggleInventory = !this.activeWorkstation || this.activeWorkstation.type === 'inventory';
+    if (canToggleInventory && this.input.keyWasPressed(settings.get('keybinds').inventory)) {
       this._toggleInventory();
     }
     for (let i = 0; i < 9; i++) {

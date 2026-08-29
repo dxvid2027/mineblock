@@ -31,6 +31,7 @@ function createWindow() {
     minHeight: 600,
     backgroundColor: '#0a0d14',
     title: 'MineBlock',
+    icon: path.join(__dirname, isDev ? '../src/public/icons/icon-512.png' : '../dist/icons/icon-512.png'),
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

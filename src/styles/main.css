@@ -30,6 +30,22 @@ html, body {
   font-family: var(--mb-font);
   user-select: none;
   -webkit-user-select: none;
+  cursor: default;
+}
+
+/* Inventory, crafting, settings, pause, etc. — always show a plain visible
+   cursor over these, regardless of what the game view's pointer-lock state
+   was a moment ago. */
+#ui-root .interactive,
+#ui-root .interactive * {
+  cursor: default;
+}
+#ui-root .mb-btn,
+#ui-root .inv-slot,
+#ui-root .hotbar-slot,
+#ui-root .recipe-item,
+#ui-root .mb-close {
+  cursor: pointer;
 }
 
 #app {
@@ -195,32 +211,54 @@ button {
 .crosshair::before { left: 8px; top: 0; width: 2px; height: 18px; }
 .crosshair::after { top: 8px; left: 0; height: 2px; width: 18px; }
 
-.bars {
-  position: absolute;
-  bottom: 96px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: center;
-}
-.bar-row { display: flex; gap: 3px; }
-.bar-icon {
-  width: 18px; height: 18px;
-  border-radius: 3px;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.5);
-}
-.bar-icon.heart { background: var(--mb-bad); }
-.bar-icon.heart.empty { background: #402323; }
-.bar-icon.hunger { background: var(--mb-hunger); }
-.bar-icon.hunger.empty { background: #3a2c17; }
-
-.hotbar {
+/* Anchors the hotbar bottom-center, then hangs hearts (top-left), hunger
+   (top-right) and the offhand slot (immediately left) off it — the dock's
+   own size is just the hotbar's, since the rest are absolutely positioned. */
+.hud-dock {
   position: absolute;
   bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
+  width: max-content;
+}
+
+.hearts-row, .hunger-row {
+  position: absolute;
+  bottom: 100%;
+  margin-bottom: 6px;
+  display: flex;
+  flex-wrap: wrap-reverse;
+  gap: 3px;
+  max-width: 230px;
+}
+.hearts-row { left: 0; }
+.hunger-row { right: 0; justify-content: flex-end; }
+
+.bar-icon {
+  width: 20px;
+  height: 20px;
+  filter: drop-shadow(1px 1.5px 0 rgba(0,0,0,0.55));
+}
+.bar-icon.heart path,
+.bar-icon.hunger rect,
+.bar-icon.hunger circle,
+.bar-icon.hunger ellipse {
+  fill: currentColor;
+}
+.bar-icon.heart.full { color: var(--mb-bad); }
+.bar-icon.heart.half { color: var(--mb-bad); opacity: 0.55; }
+.bar-icon.heart.empty { color: #402323; }
+.bar-icon.hunger.full { color: var(--mb-hunger); }
+.bar-icon.hunger.empty { color: #3a2c17; }
+
+.offhand-slot {
+  position: absolute;
+  right: 100%;
+  bottom: 0;
+  margin-right: 8px;
+}
+
+.hotbar {
   display: flex;
   gap: 6px;
   pointer-events: auto;

@@ -33,6 +33,10 @@ export class InputManager {
     this._onWheel = (e) => { this.wheelDelta += Math.sign(e.deltaY); };
     this._onPointerLockChange = () => {
       this.pointerLocked = document.pointerLockElement === this.dom;
+      // Belt-and-braces: explicitly restore a plain, visible cursor the
+      // instant pointer lock ends (e.g. opening the inventory or a menu),
+      // rather than trusting it reappears on its own.
+      document.body.style.cursor = this.pointerLocked ? 'none' : 'default';
     };
 
     window.addEventListener('keydown', this._onKeyDown);

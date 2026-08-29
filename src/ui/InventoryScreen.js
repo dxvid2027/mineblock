@@ -116,6 +116,20 @@ export class InventoryScreen {
       row.appendChild(el);
       this._equipEls[slot] = el;
     }
+
+    // Offhand: a spacer then its own slot, set apart from the armor slots
+    // since it holds any item (not just armor).
+    const spacer = document.createElement('div');
+    spacer.style.cssText = 'width:14px;';
+    row.appendChild(spacer);
+
+    this._offhandEl = makeSlotEl();
+    this._offhandEl.title = 'offhand';
+    this._offhandEl.innerHTML = '<span style="opacity:.35;font-size:20px;position:absolute;">✋</span>';
+    this._offhandEl.addEventListener('click', () => this._clickOffhand());
+    attachTooltip(this._offhandEl, () => this.inv.offhand);
+    row.appendChild(this._offhandEl);
+
     return row;
   }
 
@@ -226,6 +240,11 @@ export class InventoryScreen {
     this.refresh();
   }
 
+  _clickOffhand() {
+    // Unlike the armor slots, the offhand accepts any item.
+    this._genericClick(() => this.inv.offhand, (v) => { this.inv.offhand = v; });
+  }
+
   _genericClick(get, set, half = false) {
     const slot = get();
     if (!this.cursor) {
@@ -311,6 +330,8 @@ export class InventoryScreen {
       renderSlotContent(el, item);
       if (!item) el.innerHTML = `<span style="opacity:.35;font-size:20px;position:absolute;">${EQUIP_ICONS[slot]}</span>`;
     }
+    renderSlotContent(this._offhandEl, this.inv.offhand);
+    if (!this.inv.offhand) this._offhandEl.innerHTML = '<span style="opacity:.35;font-size:20px;position:absolute;">✋</span>';
     if (this.craftSize > 0) {
       for (let i = 0; i < 9; i++) renderSlotContent(this._craftEls[i], this.inv.craftingGrid[i]);
       const match = matchRecipe(this.inv.craftingGrid);

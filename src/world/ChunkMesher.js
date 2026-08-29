@@ -54,11 +54,17 @@ class GeometryBuilder {
 
 const WHITE = [1, 1, 1];
 
+// Requested minimum visibility: caves, the underground and nighttime should
+// always stay easy to see, not just where a torch or skylight reaches — so
+// the floor sits well above the old "needs a torch" 0.05, rather than being
+// driven purely by sky/block light propagation.
+const MIN_LIGHT = 0.8;
+
 function lightLevel(world, wx, wy, wz, dayFactor) {
   const sky = world.getSkyLightGlobal(wx, wy, wz);
   const block = world.getBlockLightGlobal(wx, wy, wz);
   const combined = Math.max(sky * dayFactor, block);
-  return Math.min(1, Math.max(0.05, combined / 15));
+  return Math.min(1, Math.max(MIN_LIGHT, combined / 15));
 }
 
 /**

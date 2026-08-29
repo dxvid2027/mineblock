@@ -37,9 +37,9 @@ export class DayNightCycle {
 
     if (!dimension.hasSkylight) {
       // Perpetual dim twilight in dimensions without a sky (e.g. Ember Expanse).
-      this.dayFactor = 0.35;
-      this.sunLight.intensity = 0.25;
-      this.ambient.intensity = 0.55;
+      this.dayFactor = 0.6;
+      this.sunLight.intensity = 0.35;
+      this.ambient.intensity = 0.85;
       this.ambient.color.set(dimension.ambientNight);
       this.sky.top.set(dimension.skyTop);
       this.sky.bottom.set(dimension.skyBottom);
@@ -51,10 +51,12 @@ export class DayNightCycle {
     this.sunLight.position.set(Math.cos(angle) * 100, Math.max(height, -0.1) * 100 + 20, 40);
     this.sunLight.target.position.set(0, 0, 0);
 
-    // Brightness curve: bright through the day, dark at night, smooth dawn/dusk.
-    this.dayFactor = THREE.MathUtils.clamp(height * 1.4 + 0.15, 0.05, 1);
-    this.sunLight.intensity = THREE.MathUtils.clamp(height * 1.3, 0, 1.2);
-    this.ambient.intensity = THREE.MathUtils.lerp(0.15, 0.65, this.dayFactor);
+    // Brightness curve: still visibly brighter by day, but the floor is kept
+    // high (requested: caves/underground/night should always stay easy to
+    // see) rather than dropping toward black at night.
+    this.dayFactor = THREE.MathUtils.clamp(height * 1.4 + 0.15, 0.6, 1);
+    this.sunLight.intensity = THREE.MathUtils.clamp(height * 1.3, 0.2, 1.2);
+    this.ambient.intensity = THREE.MathUtils.lerp(0.6, 0.9, this.dayFactor);
 
     const isNight = height < -0.15;
     const isDawnDusk = height >= -0.15 && height < 0.2;

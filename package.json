@@ -38,6 +38,7 @@
       "dist/**/*",
       "electron/**/*"
     ],
+    "icon": "src/public/icons/icon-512.png",
     "mac": { "category": "public.app-category.games", "target": "dmg" },
     "win": { "target": "nsis" },
     "linux": { "target": "AppImage", "category": "Game" }

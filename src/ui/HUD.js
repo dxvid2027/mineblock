@@ -1,4 +1,5 @@
-import { renderSlotContent } from './slotHelpers.js';
+import { renderSlotContent, makeSlotEl } from './slotHelpers.js';
+import { heartIconMarkup, drumstickIconMarkup } from './icons.js';
 import { globalEvents } from '../core/EventBus.js';
 import { BlockRegistry } from '../blocks/BlockRegistry.js';
 
@@ -17,11 +18,11 @@ export class HUD {
       <div class="clock" id="hud-clock"></div>
       <div class="interact-hint interactive" id="hud-hint" style="display:none;"></div>
       <div class="toast-log" id="hud-toasts"></div>
-      <div class="bars">
-        <div class="bar-row" id="hud-hearts"></div>
-        <div class="bar-row" id="hud-hunger"></div>
+      <div class="hud-dock">
+        <div class="hearts-row" id="hud-hearts"></div>
+        <div class="hunger-row" id="hud-hunger"></div>
+        <div class="hotbar" id="hud-hotbar"></div>
       </div>
-      <div class="hotbar interactive" id="hud-hotbar"></div>
     `;
     root.appendChild(this.el);
 
@@ -34,6 +35,12 @@ export class HUD {
       this.hotbarEl.appendChild(slot);
       this._hotbarSlots.push(slot);
     }
+
+    // Offhand: shown just left of the hotbar, mirroring the classic layout.
+    // Display-only here — it's edited from the full Inventory screen.
+    this.offhandEl = makeSlotEl('hotbar-slot offhand-slot');
+    this.offhandEl.title = 'Offhand';
+    this.hotbarEl.parentElement.appendChild(this.offhandEl);
 
     this._offToast = globalEvents.on('ui:toast', (msg) => this._pushToast(msg));
     this._offInv = globalEvents.on('inventory:changed', () => this._refreshHotbar());
@@ -67,30 +74,29 @@ export class HUD {
       renderSlotContent(this._hotbarSlots[i], inv.slots[i]);
       this._hotbarSlots[i].classList.toggle('active', i === inv.selectedHotbar);
     }
+    renderSlotContent(this.offhandEl, inv.offhand);
   }
 
   update(world, dayNight, interaction) {
     const p = this.player;
     const hearts = this.el.querySelector('#hud-hearts');
     const hunger = this.el.querySelector('#hud-hunger');
-    hearts.innerHTML = '';
-    hunger.innerHTML = '';
     const heartCount = Math.ceil(p.maxHealth / 2);
+    let heartsHtml = '';
     for (let i = 0; i < heartCount; i++) {
       const filled = p.health >= (i + 1) * 2;
       const half = !filled && p.health > i * 2;
-      const icon = document.createElement('div');
-      icon.className = `bar-icon heart${filled || half ? '' : ' empty'}`;
-      if (half) icon.style.opacity = '0.5';
-      hearts.appendChild(icon);
+      heartsHtml += heartIconMarkup(filled ? 'full' : half ? 'half' : 'empty');
     }
+    hearts.innerHTML = heartsHtml;
+
     const hungerCount = Math.ceil(p.maxHunger / 2);
+    let hungerHtml = '';
     for (let i = 0; i < hungerCount; i++) {
       const filled = p.hunger >= (i + 1) * 2;
-      const icon = document.createElement('div');
-      icon.className = `bar-icon hunger${filled ? '' : ' empty'}`;
-      hunger.appendChild(icon);
+      hungerHtml += drumstickIconMarkup(filled ? 'full' : 'empty');
     }
+    hunger.innerHTML = hungerHtml;
 
     if (this._lastSelected !== p.inventory.selectedHotbar) {
       this._lastSelected = p.inventory.selectedHotbar;
