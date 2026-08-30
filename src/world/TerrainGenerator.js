@@ -296,19 +296,27 @@ export class TerrainGenerator {
   }
 
   _scatterOres(chunk, baseX, baseZ, stoneId) {
-    for (const vein of this.oreVeins) {
+    // Each vein is salted by its index in the table, never by anything
+    // derived from its name. Salting by name length made char_seam,
+    // glint_ore and aurum_ore (all nine characters) roll the identical
+    // number at every position: char_seam is rolled first and has the
+    // loosest chance, so it took every spot the other two would have
+    // wanted, and those spots are no longer stone by the time they are
+    // asked. Neither ore could generate anywhere in the world — which quietly
+    // cut off the Riftstone, the Runeforge, Infusion Dust and the Totem.
+    this.oreVeins.forEach((vein, veinIndex) => {
       for (let lz = 0; lz < CHUNK_SIZE_Z; lz++) {
         for (let lx = 0; lx < CHUNK_SIZE_X; lx++) {
           for (let y = vein.minY; y <= Math.min(vein.maxY, CHUNK_HEIGHT - 1); y++) {
             const wx = baseX + lx, wz = baseZ + lz;
-            const h = hash2D(wx * 3 + y, wz * 7 + y, this.seed ^ mulberrySeed(1, vein.block.length + y));
+            const h = hash2D(wx * 3 + y, wz * 7 + y, this.seed ^ mulberrySeed(1, veinIndex * 7919 + y));
             if (h > vein.chance) continue;
             if (chunk.getBlock(lx, y, lz) !== stoneId) continue;
             this._growVein(chunk, lx, y, lz, vein, stoneId);
           }
         }
       }
-    }
+    });
   }
 
   _growVein(chunk, x, y, z, vein, stoneId) {

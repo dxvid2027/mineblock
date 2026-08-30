@@ -93,7 +93,10 @@ Expanse. The intended route, in order:
 7. Build a **Runeforge** and apply Infusions to your gear (Rune Shards +
    Infusion Dust cost XP levels).
 8. Craft a **Riftstone** (4 Voidshard + 4 Glimmer Shards + 2 Glint Ingots),
-   place it, right-click to open the portal to the **Ember Expanse**.
+   place it, right-click to open the portal to the **Ember Expanse**. A
+   matching Riftstone settles beside you on arrival, so one stone is enough
+   for the round trip — the Expanse has neither Glint nor Glimmerstone ore,
+   and without that you could not build a way back.
 9. Survive the Expanse and defeat **The Cinder Warden** (220 HP). It drops
    the **Warden Core**, and the game shows its ending — after which the world
    stays open to keep building in.

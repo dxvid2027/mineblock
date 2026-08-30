@@ -424,6 +424,7 @@ export class Game {
     this.player.position.set(x + 0.5, topY + 2, z + 0.5);
     this.player.velocity.set(0, 0, 0);
     globalEvents.emit('ui:toast', `You step into ${this.world.dimension.displayName}.`);
+    this._ensureReturnPortal(x, z);
 
     if (nextId === 'ember_expanse' && !this.entities.bossAlive && this.player.level >= 5 && Math.random() < 0.5) {
       const angle = Math.random() * Math.PI * 2;
@@ -431,6 +432,45 @@ export class Game {
       const by = this.world.heightAtWorld(Math.floor(bx), Math.floor(bz)) + 1;
       this.entities.spawnMob('cinder_warden', { x: bx, y: by, z: bz });
       globalEvents.emit('ui:toast', 'You sense a monstrous presence nearby...');
+    }
+  }
+
+  /**
+   * Leaves a Riftstone standing beside the arrival point, so a dimension can
+   * always be left again.
+   *
+   * Without it the trip was one-way: the stone you used stays behind in the
+   * dimension you left, and the Ember Expanse has neither Glint nor
+   * Glimmerstone ore, so a second one cannot be built there. A player who
+   * carried a single Riftstone through was stranded for good.
+   */
+  _ensureReturnPortal(x, z) {
+    const riftId = BlockRegistry.idOf('riftstone');
+    const groundAt = (gx, gz) => this.world.heightAtWorld(gx, gz);
+
+    // One already here means this spot is connected; going back and forth
+    // must not litter the ground with them.
+    const base = groundAt(x, z);
+    for (let dx = -3; dx <= 3; dx++) {
+      for (let dz = -3; dz <= 3; dz++) {
+        for (let dy = -2; dy <= 4; dy++) {
+          if (this.world.getBlockGlobal(x + dx, base + dy, z + dz) === riftId) return;
+        }
+      }
+    }
+
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [2, 0], [0, 2], [-2, 0], [0, -2]]) {
+      const px = x + dx, pz = z + dz;
+      const top = groundAt(px, pz);
+      if (top < 1) continue;
+      // Standing room: solid underneath, clear above, so it can be reached
+      // and right-clicked rather than buried in a hillside.
+      if (!this.world.isSolidGlobal(px, top, pz)) continue;
+      if (this.world.getBlockGlobal(px, top + 1, pz) !== 0) continue;
+      if (this.world.getBlockGlobal(px, top + 2, pz) !== 0) continue;
+      this.world.setBlockGlobal(px, top + 1, pz, riftId);
+      globalEvents.emit('ui:toast', 'A Riftstone settles beside you — your way back.');
+      return;
     }
   }
 
@@ -476,6 +516,17 @@ export class Game {
     this.deathScreen = new DeathScreen(this.uiRoot, {
       onRespawn: () => {
         this.player.respawn();
+        // respawn() sends the player to their spawn point, which is always in
+        // the overworld. The world has to follow: dying in the Ember Expanse
+        // otherwise left the player marked as being in the overworld while
+        // still standing in Ember terrain, and that mismatch was saved.
+        if (this.world.dimensionId !== this.player.dimension) {
+          this.world.setDimension(this.player.dimension);
+          this.entities.setWorld(this.world);
+          const rx = Math.floor(this.player.position.x), rz = Math.floor(this.player.position.z);
+          this.world.forceLoad(rx, rz, 1);
+          this.player.position.y = this.world.heightAtWorld(rx, rz) + 2;
+        }
         this.deathScreen.destroy();
         this.deathScreen = null;
         this.state = 'playing';
