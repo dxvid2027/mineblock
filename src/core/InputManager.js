@@ -15,6 +15,15 @@ export class InputManager {
     this.wheelDelta = 0;
     this.pointerLocked = false;
 
+    // Touch input writes into these so no gameplay system needs to know
+    // whether a keyboard or an on-screen control is driving it. See
+    // ui/TouchControls.js; iOS Safari has no Pointer Lock, which is why look
+    // input cannot simply be gated on `pointerLocked`.
+    this.moveAxis = { x: 0, y: 0 };   // analog stick, -1..1 (y: +forward)
+    this.virtualActions = new Set();  // action names held by on-screen buttons
+    this.touchLook = false;           // a drag is steering the camera
+    this.isTouch = false;
+
     this._onKeyDown = (e) => {
       if (!this._keysDown.has(e.code)) this._pressedThisFrame.add(e.code);
       this._keysDown.add(e.code);
@@ -51,7 +60,20 @@ export class InputManager {
   }
 
   requestPointerLock() {
+    // Touch devices drive the camera by dragging instead; asking for a lock
+    // there either throws or silently does nothing.
+    if (this.isTouch) return;
     if (document.pointerLockElement !== this.dom) this.dom.requestPointerLock?.();
+  }
+
+  /** True while the camera should follow pointer movement. */
+  get lookActive() {
+    return this.pointerLocked || this.touchLook;
+  }
+
+  /** Injects a one-frame key press, used by on-screen menu buttons. */
+  pressVirtualKey(code) {
+    this._pressedThisFrame.add(code);
   }
 
   releasePointerLock() {
@@ -59,6 +81,7 @@ export class InputManager {
   }
 
   isDown(action) {
+    if (this.virtualActions.has(action)) return true;
     const code = settings.get('keybinds')[action];
     return code ? this._keysDown.has(code) : false;
   }

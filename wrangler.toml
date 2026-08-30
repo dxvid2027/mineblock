@@ -1,0 +1,12 @@
+# Cloudflare Pages configuration for the MineBlock web build.
+#
+# The game is fully static — world generation, saves and all assets run in the
+# browser — so Pages serves it with no Worker or backend of any kind.
+#
+# Deploy from a terminal:   npm run deploy
+# or connect the GitHub repo in the Cloudflare dashboard and use:
+#   Build command:     npm run build:web
+#   Output directory:  dist
+name = "mineblock"
+compatibility_date = "2024-11-01"
+pages_build_output_dir = "dist"

@@ -4,8 +4,15 @@
 // (e.g. during `vite dev` without Electron), so the game never crashes on
 // missing IPC.
 
+// Tablets and phones have far less GPU headroom than a desktop, so they get a
+// shorter default view distance. Only the default changes — Settings still
+// lets the player raise it.
+const IS_COARSE_POINTER =
+  typeof window !== 'undefined' &&
+  (window.matchMedia?.('(pointer: coarse)').matches || navigator.maxTouchPoints > 0);
+
 const DEFAULTS = {
-  renderDistance: 8, // chunks
+  renderDistance: IS_COARSE_POINTER ? 5 : 8, // chunks
   fov: 75,
   mouseSensitivity: 0.6,
   masterVolume: 0.7,

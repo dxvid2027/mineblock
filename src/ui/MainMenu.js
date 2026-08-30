@@ -22,15 +22,24 @@ export class MainMenu {
       <div class="menu-list">
         <button class="mb-btn primary" id="btn-play">Play</button>
         <button class="mb-btn" id="btn-settings">Settings</button>
-        <button class="mb-btn" id="btn-quit">Quit</button>
+        <button class="mb-btn" id="btn-quit"></button>
       </div>
       <div class="version-tag">MineBlock v0.1.0</div>
     `;
     this.el.querySelector('#btn-play').onclick = () => this._showWorldSelect();
     this.el.querySelector('#btn-settings').onclick = () => new SettingsUI(this.el, {});
-    this.el.querySelector('#btn-quit').onclick = () => {
-      if (window.mineblock) window.close();
-      else this.el.querySelector('#btn-quit').textContent = 'Close the window to quit';
+    // In the desktop app this quits; a browser tab cannot close itself, so
+    // there it becomes the fullscreen toggle, which is what a player on an
+    // iPad actually wants from this slot.
+    const quitBtn = this.el.querySelector('#btn-quit');
+    const isDesktopApp = !!window.mineblock;
+    quitBtn.textContent = isDesktopApp ? 'Quit' : 'Fullscreen';
+    quitBtn.onclick = () => {
+      if (isDesktopApp) { window.close(); return; }
+      const el = document.documentElement;
+      if (document.fullscreenElement) document.exitFullscreen?.();
+      else if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+      else quitBtn.textContent = 'Add to Home Screen for fullscreen';
     };
   }
 

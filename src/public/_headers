@@ -1,0 +1,16 @@
+# Vite fingerprints everything under /assets, so those can be cached forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The entry point must never be cached, or a deploy would not reach players
+# who already have the page open or installed to their home screen.
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/sw.js
+  Cache-Control: no-cache
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin

@@ -30,6 +30,7 @@ import { PauseMenu } from '../ui/PauseMenu.js';
 import { DeathScreen } from '../ui/DeathScreen.js';
 import { VictoryScreen } from '../ui/VictoryScreen.js';
 import { LoadingScreen } from '../ui/LoadingScreen.js';
+import { TouchControls, isTouchDevice } from '../ui/TouchControls.js';
 
 registerBlockItems();
 
@@ -48,7 +49,11 @@ export class Game {
     this.input = input;
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.isTouch = isTouchDevice();
+    this.input.isTouch = this.isTouch;
+    // iPads report devicePixelRatio 2; rendering the whole voxel scene at 2x
+    // on a large panel roughly halves the frame rate for little visible gain.
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.isTouch ? 1.5 : 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this.scene = new THREE.Scene();
@@ -63,6 +68,10 @@ export class Game {
 
     this._onResize = () => this._handleResize();
     window.addEventListener('resize', this._onResize);
+    // iOS fires orientationchange before resize, and its dynamic toolbar
+    // changes the viewport without a resize event in some cases.
+    window.addEventListener('orientationchange', this._onResize);
+    window.visualViewport?.addEventListener('resize', this._onResize);
 
     this._emberLight = new THREE.PointLight(0xff8a3f, 0, 8);
     this.scene.add(this._emberLight);
@@ -127,6 +136,7 @@ export class Game {
     }
 
     this.hud = new HUD(this.uiRoot, this.player);
+    if (this.isTouch) this.touchControls = new TouchControls(this.uiRoot, this.input, this.canvas);
     this.debugRenderer = new DebugRenderer(this.scene);
     this.debugOverlay = new DebugOverlay(this.uiRoot);
     this.loading.destroy();
@@ -267,11 +277,13 @@ export class Game {
     if (this.activeWorkstation) this._closeWorkstation();
     const ui = new InventoryScreen(this.uiRoot, this.player, { craftSize: 2, title: 'Inventory' });
     this.activeWorkstation = { type: 'inventory', ui };
+    this.touchControls?.setVisible(false);
     this.input.releasePointerLock();
   }
 
   _openWorkstation({ type, pos }) {
     if (this.activeWorkstation) this._closeWorkstation();
+    this.touchControls?.setVisible(false);
     this.input.releasePointerLock();
 
     if (type === 'crafting') {
@@ -309,6 +321,7 @@ export class Game {
     if (!this.activeWorkstation) return;
     this.activeWorkstation.ui.destroy();
     this.activeWorkstation = null;
+    this.touchControls?.setVisible(true);
     if (this.state === 'playing') this.input.requestPointerLock();
   }
 
@@ -361,6 +374,7 @@ export class Game {
   _togglePause() {
     if (this.state === 'playing') {
       this.state = 'paused';
+      this.touchControls?.setVisible(false);
       this.input.releasePointerLock();
       this.pauseMenu = new PauseMenu(this.uiRoot, {
         onResume: () => this._togglePause(),
@@ -370,6 +384,7 @@ export class Game {
       this.state = 'playing';
       this.pauseMenu.destroy();
       this.pauseMenu = null;
+      this.touchControls?.setVisible(true);
       this.input.requestPointerLock();
     }
   }
@@ -378,6 +393,7 @@ export class Game {
     if (this.state !== 'playing' || this.bossDefeated) return;
     this.bossDefeated = true;
     this.state = 'victory';
+    this.touchControls?.setVisible(false);
     this.input.releasePointerLock();
     this.victoryScreen = new VictoryScreen(this.uiRoot, {
       stats: { days: this.dayNight.day, level: this.player.level },
@@ -385,6 +401,7 @@ export class Game {
         this.victoryScreen.destroy();
         this.victoryScreen = null;
         this.state = 'playing';
+        this.touchControls?.setVisible(true);
         this.input.requestPointerLock();
       }
     });
@@ -394,6 +411,7 @@ export class Game {
   _onPlayerDied() {
     if (this.state !== 'playing') return;
     this.state = 'dead';
+    this.touchControls?.setVisible(false);
     this.input.releasePointerLock();
     this.deathScreen = new DeathScreen(this.uiRoot, {
       onRespawn: () => {
@@ -401,6 +419,7 @@ export class Game {
         this.deathScreen.destroy();
         this.deathScreen = null;
         this.state = 'playing';
+        this.touchControls?.setVisible(true);
         this.input.requestPointerLock();
       }
     });
@@ -421,6 +440,8 @@ export class Game {
   dispose() {
     cancelAnimationFrame(this._raf);
     window.removeEventListener('resize', this._onResize);
+    window.removeEventListener('orientationchange', this._onResize);
+    window.visualViewport?.removeEventListener('resize', this._onResize);
     this.canvas.removeEventListener('click', this._requestLock);
     this.entities?.dispose();
     this.weather?.dispose();
@@ -428,5 +449,6 @@ export class Game {
     this.world?.dispose();
     this.debugRenderer?.dispose();
     this.debugOverlay?.dispose();
+    this.touchControls?.dispose();
   }
 }

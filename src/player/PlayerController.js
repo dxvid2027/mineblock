@@ -25,7 +25,7 @@ export class PlayerController {
 
   update(dt, world) {
     const input = this.input;
-    if (input.pointerLocked) {
+    if (input.lookActive) {
       const sensitivity = settings.get('mouseSensitivity') * 0.0022;
       this.player.yaw -= input.mouseDX * sensitivity;
       const invert = settings.get('invertY') ? -1 : 1;
@@ -33,8 +33,15 @@ export class PlayerController {
       this.player.pitch = THREE.MathUtils.clamp(this.player.pitch, -Math.PI / 2 + 0.01, Math.PI / 2 - 0.01);
     }
 
-    const strafe = (input.isDown('right') ? 1 : 0) - (input.isDown('left') ? 1 : 0);
-    const moveForward = (input.isDown('forward') ? 1 : 0) - (input.isDown('back') ? 1 : 0);
+    // Keyboard is digital, the on-screen stick is analog; whichever is being
+    // used wins, so both control schemes can coexist on the same build.
+    const keyStrafe = (input.isDown('right') ? 1 : 0) - (input.isDown('left') ? 1 : 0);
+    const keyForward = (input.isDown('forward') ? 1 : 0) - (input.isDown('back') ? 1 : 0);
+    const stick = input.moveAxis;
+    const usingStick = stick.x !== 0 || stick.y !== 0;
+    const strafe = usingStick ? stick.x : keyStrafe;
+    const moveForward = usingStick ? stick.y : keyForward;
+
     const crouching = input.isDown('crouch');
     const sprinting = input.isDown('sprint') && moveForward > 0 && this.player.hunger > 6 && !crouching;
 
@@ -52,10 +59,17 @@ export class PlayerController {
     const sinY = Math.sin(yaw), cosY = Math.cos(yaw);
     const moveX = (-sinY * moveForward + cosY * strafe);
     const moveZ = (-cosY * moveForward - sinY * strafe);
-    const len = Math.hypot(moveX, moveZ) || 1;
+    const len = Math.hypot(moveX, moveZ);
 
-    this.player.velocity.x = (moveX / len) * speed * (moveForward || strafe ? 1 : 0);
-    this.player.velocity.z = (moveZ / len) * speed * (moveForward || strafe ? 1 : 0);
+    // The stick's deflection scales speed; the keyboard is always full tilt.
+    const throttle = usingStick ? Math.min(1, Math.hypot(strafe, moveForward)) : (len > 0 ? 1 : 0);
+    if (len > 0) {
+      this.player.velocity.x = (moveX / len) * speed * throttle;
+      this.player.velocity.z = (moveZ / len) * speed * throttle;
+    } else {
+      this.player.velocity.x = 0;
+      this.player.velocity.z = 0;
+    }
 
     if (input.isDown('jump')) {
       if (this.player.onGround) {

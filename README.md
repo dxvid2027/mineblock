@@ -1,11 +1,12 @@
 # MineBlock
 
-MineBlock is a complete, original single-player voxel sandbox survival game
-for desktop (Windows, macOS, Linux), built with [three.js](https://threejs.org/)
-and packaged as a desktop app with [Electron](https://www.electronjs.org/).
-Every block, item, creature, dimension, texture and system in this project
-is original content — no assets, names, or code were copied from any
-existing game.
+MineBlock is a complete, original single-player voxel sandbox survival game.
+It runs as a desktop app (Windows, macOS, Linux) via
+[Electron](https://www.electronjs.org/), and as a website playable by touch on
+an iPad — the same build, deployed to Cloudflare Pages. It is rendered with
+[three.js](https://threejs.org/). Every block, item, creature, dimension,
+texture and system in this project is original content — no assets, names, or
+code were copied from any existing game.
 
 ## Highlights
 
@@ -93,6 +94,68 @@ npm run build       # electron-builder output lands in release/
 static build (useful for a quick production-mode smoke test without
 packaging an installer).
 
+For the browser version:
+
+```bash
+npm run build:web      # static site in dist/
+npm run preview:web    # serve it locally at http://localhost:4173
+npm test               # data-integrity and progression checks
+```
+
+## Playing on an iPad (or any tablet/phone)
+
+The web build is fully playable by touch. iOS Safari implements no Pointer
+Lock API, so touch devices get their own control scheme rather than the
+desktop one:
+
+- **Left stick** — analog movement; push it all the way to sprint.
+- **Drag anywhere else** — look around.
+- **⛏ / ▣** — break (hold) and place.
+- **⤒ / ⤓** — jump and crouch.
+- **🎒 / ☰** — inventory and pause.
+- Tap a hotbar slot to select it.
+
+Touch hardware also gets a shorter default render distance and a capped pixel
+ratio, since an iPad reports a 2× display and rendering the whole voxel scene
+at 2× roughly halves the frame rate.
+
+**Add it to the Home Screen** (Share → Add to Home Screen) to get the app
+icon, a fullscreen window with no browser chrome, and offline play: a service
+worker pre-caches the whole bundle at install, so after the first visit the
+game runs with no network at all. Worlds are saved in the browser, on device.
+
+## Publishing to Cloudflare Pages
+
+The game is completely static — terrain is generated from a seed in the
+browser and saves live in local storage — so it needs no server, database or
+Worker.
+
+**Option A — connect the repository** (auto-deploys on every push):
+in the Cloudflare dashboard, *Workers & Pages → Create → Pages → Connect to
+Git*, pick this repo and set
+
+| Setting | Value |
+| --- | --- |
+| Build command | `npm run build:web` |
+| Output directory | `dist` |
+| Node version | 22 |
+
+**Option B — deploy from your machine:**
+
+```bash
+npx wrangler login
+npm run deploy          # builds, then publishes dist/ to Pages
+```
+
+**Option C — GitHub Actions:** `.github/workflows/deploy.yml` builds, runs the
+tests and publishes on every push. Add two repository secrets and it takes
+over: `CLOUDFLARE_API_TOKEN` (a token with *Cloudflare Pages: Edit*) and
+`CLOUDFLARE_ACCOUNT_ID`.
+
+`wrangler.toml` already points Pages at `dist`, and `src/public/_headers` sets
+long-lived caching for the fingerprinted assets while keeping `index.html` and
+`sw.js` uncached, so a deploy reaches players immediately.
+
 ## Controls
 
 | Action | Key |
@@ -106,6 +169,9 @@ packaging an installer).
 | Inventory | `E` |
 | Hotbar select | `1`–`9` or scroll |
 | Pause | `Esc` |
+| Chunk borders | `P` |
+| Mob hitboxes | `L` |
+| Debug info (coordinates, biome, light) | `O` |
 
 All keybinds, render distance, FOV, mouse sensitivity and audio levels are
 configurable from Settings (available from both the main menu and the
@@ -127,7 +193,13 @@ src/
   magic/            The Infusion (enchantment-like) system
   render/           Procedural texture atlas, item icons, mob models, sky
   ui/               Main menu, HUD, inventory/crafting/smelter/runeforge
-                     screens, settings, pause/death/loading screens
+                     screens, settings, pause/death/victory/loading screens,
+                     on-screen touch controls
+  public/           Static web assets: icons, PWA manifest, service worker,
+                     Cloudflare Pages headers
+tools/              Icon generation and the service-worker build stamp
+tests/              Node test suite (progression, structures, world data,
+                     chunk mesher)
 ```
 
 Every system file carries a short header comment explaining its role;

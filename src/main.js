@@ -36,4 +36,21 @@ async function main() {
   };
 }
 
+/**
+ * Registers the offline service worker (see public/sw.js). Only in a real
+ * browser deployment: the Electron build loads from file:// where service
+ * workers are unavailable, and the dev server has no sw.js to serve.
+ */
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  if (window.mineblock) return;          // Electron desktop build
+  if (!import.meta.env.PROD) return;     // dev server
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {
+      // Offline play is a bonus; failing to register must never break the game.
+    });
+  });
+}
+
+registerServiceWorker();
 main();
