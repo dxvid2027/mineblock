@@ -8,6 +8,7 @@ import { Noise, hash2D } from './noise/Noise.js';
 import { BlockRegistry } from '../blocks/BlockRegistry.js';
 import { CHUNK_SIZE_X, CHUNK_SIZE_Z, CHUNK_HEIGHT } from './Chunk.js';
 import { structuresFor } from './Structures.js';
+import { REGION_SIZE, megaStructureForRegion } from './MegaStructures.js';
 
 const SEA_LEVEL = 62;
 const CAVE_THRESHOLD = 0.045; // tunnels: ~3% of the underground — see isCave()
@@ -208,6 +209,7 @@ export class TerrainGenerator {
     this._scatterOres(chunk, baseX, baseZ, stoneId);
     this._scatterCaveFlora(chunk, baseX, baseZ, stoneId);
     this._placeStructures(chunk, baseX, baseZ);
+    this._placeMegaStructures(chunk, baseX, baseZ);
     chunk.generated = true;
   }
 
@@ -363,6 +365,78 @@ export class TerrainGenerator {
       this._buildStructure(chunk, struct, lx, originY, lz, biome);
       return; // one per chunk
     }
+  }
+
+  /**
+   * Builds the slice of any landmark that reaches into this chunk. Landmarks
+   * live on a coarse region grid rather than per chunk (see
+   * MegaStructures.js), so a chunk has to look at its own region and the
+   * eight around it: one whose centre sits just over a region border still
+   * spills across it.
+   */
+  _placeMegaStructures(chunk, baseX, baseZ) {
+    const regionX = Math.floor(baseX / REGION_SIZE);
+    const regionZ = Math.floor(baseZ / REGION_SIZE);
+    const context = {
+      seed: this.seed,
+      dimensionId: this.dimensionId,
+      hash2D,
+      seaLevel: this.seaLevel,
+      isEmber: this.isEmber,
+      heightAt: (x, z) => this.heightAt(x, z, this.pickBiome(x, z))
+    };
+
+    for (let rz = regionZ - 1; rz <= regionZ + 1; rz++) {
+      for (let rx = regionX - 1; rx <= regionX + 1; rx++) {
+        const placed = megaStructureForRegion(rx, rz, context);
+        if (!placed) continue;
+        const { mega, x, y, z } = placed;
+        // Cheap rejection before doing any building work at all.
+        if (x + mega.radius < baseX || x - mega.radius >= baseX + CHUNK_SIZE_X) continue;
+        if (z + mega.radius < baseZ || z - mega.radius >= baseZ + CHUNK_SIZE_Z) continue;
+        this._buildMegaStructure(chunk, mega, x, y, z, baseX, baseZ);
+      }
+    }
+  }
+
+  _buildMegaStructure(chunk, mega, ox, oy, oz, baseX, baseZ) {
+    // Seeded from the landmark's own position, not the chunk's: every chunk
+    // that clips it must roll the same numbers, or the eroded holes would
+    // differ from one chunk to the next and the walls would not line up.
+    let rngState = (hash2D(ox, oz, this.seed ^ 0x3a17c0de) * 4294967296) >>> 0 || 1;
+    const rng = () => {
+      rngState ^= rngState << 13; rngState >>>= 0;
+      rngState ^= rngState >>> 17;
+      rngState ^= rngState << 5; rngState >>>= 0;
+      return rngState / 4294967296;
+    };
+
+    const put = (dx, dy, dz, id) => {
+      const x = ox + dx - baseX, y = oy + dy, z = oz + dz - baseZ;
+      if (!chunk.inBounds(x, y, z)) return;
+      chunk.setBlock(x, y, z, id, { recordDiff: false });
+    };
+
+    const api = {
+      rng,
+      groundY: oy,
+      // Lets a builder skip a whole column the instant it falls outside this
+      // chunk, which is what keeps clipping a 47000-block tower cheap.
+      column: (dx, dz) => {
+        const x = ox + dx - baseX, z = oz + dz - baseZ;
+        return x >= 0 && x < CHUNK_SIZE_X && z >= 0 && z < CHUNK_SIZE_Z;
+      },
+      set: (dx, dy, dz, name) => put(dx, dy, dz, BlockRegistry.idOf(name)),
+      air: (dx, dy, dz) => put(dx, dy, dz, 0),
+      crate: (dx, dy, dz, lootId) => {
+        put(dx, dy, dz, BlockRegistry.idOf('storage_crate'));
+        const x = ox + dx - baseX, y = oy + dy, z = oz + dz - baseZ;
+        if (!chunk.inBounds(x, y, z)) return;
+        chunk.blockEntities.set(`${x},${y},${z}`, { type: 'storage', loot: lootId });
+      }
+    };
+
+    mega.build(api);
   }
 
   _buildStructure(chunk, struct, lx, ly, lz, biome) {

@@ -55,6 +55,14 @@ code were copied from any existing game.
   Rest and Crystal Hollow below it; Ember Shrine and Cinder Vault in the
   Ember Expanse. Each has its own loot table, rolled the first time you open
   its Storage Crate.
+- **Two landmarks you cross the map for**: every dimension has one structure
+  far too big for the chunk-sized ones above — **The Hollow Spire**, a 29x29,
+  62-block ruined tower of seven tapering storeys with ladders, window slits
+  and buttresses, and **The Emberforge**, a walled foundry with four corner
+  towers, magma channels and a chimney reaching 42 blocks over the Expanse.
+  Both hold three loot vaults and the game's richest tables. They sit on a
+  384-block region grid rather than per chunk, so each one is built in slices
+  by every chunk that overlaps it (`src/world/MegaStructures.js`).
 - **Save/load**: worlds persist as a diff from their deterministic seed
   (block edits, block-entity state, player/inventory data) across both
   dimensions, so save files stay small regardless of how much of the
@@ -311,6 +319,7 @@ src/
   blocks/           Block registry + every block definition
   items/            Item registry, crafting/smelting recipes, inventory
   world/            Noise, chunks, mesher, terrain/biome/cave generation,
+                     chunk-sized structures and region-sized landmarks,
                      day-night cycle, weather
   dimensions/       Overworld / Ember Expanse dimension configs
   entities/         Entity/Player/Mob base classes, creature roster, spawner

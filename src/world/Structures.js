@@ -89,6 +89,28 @@ export const LOOT_TABLES = {
     { id: 'ember_dust', min: 3, max: 8, chance: 0.6 },
     { id: 'elixir_of_mending', min: 1, max: 2, chance: 0.3 }
   ],
+  // The two landmarks. Their tables are richer than anything else because
+  // they are the only structures a player crosses the map for.
+  hollow_spire: [
+    { id: 'glimmer_shard', min: 1, max: 3, chance: 0.5 },
+    { id: 'aurum_ingot', min: 2, max: 5, chance: 0.6 },
+    { id: 'stone_bricks', min: 8, max: 20, chance: 0.8 },
+    { id: 'rune_shard', min: 1, max: 2, chance: 0.35 },
+    { id: 'bulwark_shield', min: 1, max: 1, chance: 0.35 },
+    { id: 'warding_totem', min: 1, max: 1, chance: 0.2 },
+    { id: 'glow_lantern', min: 1, max: 3, chance: 0.5 },
+    { id: 'baked_loaf', min: 2, max: 4, chance: 0.6 }
+  ],
+  emberforge: [
+    { id: 'voidshard', min: 2, max: 5, chance: 0.7 },
+    { id: 'sulfur_shard', min: 4, max: 9, chance: 0.8 },
+    { id: 'infusion_dust', min: 2, max: 5, chance: 0.6 },
+    { id: 'rune_shard', min: 1, max: 3, chance: 0.5 },
+    { id: 'warding_totem', min: 1, max: 1, chance: 0.3 },
+    { id: 'voidshard_sword', min: 1, max: 1, chance: 0.2 },
+    { id: 'elixir_of_mending', min: 1, max: 3, chance: 0.45 },
+    { id: 'warden_core', min: 1, max: 1, chance: 0.05 }
+  ],
   cinder_vault: [
     { id: 'voidshard', min: 2, max: 4, chance: 0.6 },
     { id: 'glimmer_shard', min: 1, max: 3, chance: 0.5 },

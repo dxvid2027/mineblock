@@ -8,6 +8,8 @@ import { Game } from './core/Game.js';
 import { BlockRegistry } from './blocks/BlockRegistry.js';
 import { ItemRegistry } from './items/ItemRegistry.js';
 import { getItemIconCanvas } from './render/ItemIcons.js';
+import { megaStructureForRegion, REGION_SIZE } from './world/MegaStructures.js';
+import { hash2D } from './world/noise/Noise.js';
 
 async function main() {
   await settings.load();
@@ -34,7 +36,10 @@ async function main() {
     get game() { return game; },
     blocks: BlockRegistry,
     items: ItemRegistry,
-    icon: getItemIconCanvas
+    icon: getItemIconCanvas,
+    // Landmark placement, exposed so the position of a structure that spans
+    // many chunks can be queried without walking the whole world to find it.
+    landmarks: { megaStructureForRegion, REGION_SIZE, hash2D }
   };
 }
 
