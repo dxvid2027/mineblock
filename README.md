@@ -151,11 +151,20 @@ tests and publishes on every push. Add two repository secrets and it takes
 over: `CLOUDFLARE_API_TOKEN` (a token with *Cloudflare Pages: Edit*) and
 `CLOUDFLARE_ACCOUNT_ID`.
 
-`wrangler.toml` already points Pages at `dist`, `.node-version` pins Node 22
-(Cloudflare's default is older than Vite 5 supports), and
-`src/public/_headers` sets long-lived caching for the fingerprinted assets
-while keeping `index.html` and `sw.js` uncached, so a deploy reaches players
-immediately.
+`.node-version` pins Node 22 (Cloudflare's default is older than Vite 5
+supports), and `src/public/_headers` sets long-lived caching for the
+fingerprinted assets while keeping `index.html` and `sw.js` uncached, so a
+deploy reaches players immediately.
+
+There is deliberately no `wrangler.toml`: for the Git integration it adds
+nothing the dashboard does not already set, while binding the repository to
+one exact Pages project name — a mismatch fails the deployment step. The CLI
+deploy names the project explicitly instead, and honours `CF_PAGES_PROJECT`
+if your project is called something else:
+
+```bash
+CF_PAGES_PROJECT=my-project-name npm run deploy
+```
 
 ### If the Cloudflare build fails
 
@@ -179,6 +188,12 @@ npm ci && npm run build
 **Failure during "Building".** Check which command Pages is running. It
 auto-detects `npm run build`, which builds the website; `npm run build:desktop`
 would try to package an Electron installer and cannot work on a web host.
+
+**Failure during "Deploying".** The build output is well inside every Pages
+limit (13 files, largest ~620 KB, against limits of 20,000 files and 25 MiB
+each), so this is almost always configuration rather than content: a
+`wrangler.toml` whose `name` does not match the Pages project, or a build
+output directory that does not match where the build actually writes (`dist`).
 
 **Slow installs.** `electron` and `electron-builder` are development
 dependencies for the desktop app, and Electron's postinstall downloads a

@@ -6,8 +6,10 @@
 # who already have the page open or installed to their home screen.
 /
   Cache-Control: no-cache
+
 /index.html
   Cache-Control: no-cache
+
 /sw.js
   Cache-Control: no-cache
 
