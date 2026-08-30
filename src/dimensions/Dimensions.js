@@ -22,6 +22,8 @@ export const DIMENSIONS = {
       isEmber: false,
       dimensionId: 'overworld'
     }),
+    // Species that spawn underground in the dark, independent of biome.
+    caveMobs: ['gloomlurker', 'rockjaw', 'palegrub', 'skitterling'],
     spawnMobCap: 24
   },
   ember_expanse: {
@@ -41,6 +43,7 @@ export const DIMENSIONS = {
       isEmber: true,
       dimensionId: 'ember_expanse'
     }),
+    caveMobs: ['emberling', 'cindermaw'],
     spawnMobCap: 16
   }
 };

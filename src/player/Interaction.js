@@ -167,18 +167,48 @@ export class Interaction {
       return;
     }
 
+    // The offhand acts as a fallback for the main hand: it is used only when
+    // the held item cannot do the job itself, so holding a pickaxe and a
+    // stack of torches lets you mine and light the way without swapping.
+    const offhandSlot = this.player.inventory.offhand;
+    const offhandItem = offhandSlot ? ItemRegistry.get(offhandSlot.id) : null;
+
     if (heldItem?.food) {
-      globalEvents.emit('player:eat', heldItem);
+      globalEvents.emit('player:eat', { item: heldItem, hand: 'main' });
+      return;
+    }
+    if (!heldItem && offhandItem?.food) {
+      globalEvents.emit('player:eat', { item: offhandItem, hand: 'off' });
       return;
     }
 
     if (heldItem?.blockName) {
-      const placePos = { x: this.target.x + this.target.face[0], y: this.target.y + this.target.face[1], z: this.target.z + this.target.face[2] };
-      if (this._collidesPlayer(placePos)) return;
-      const existing = this.world.getBlockGlobal(placePos.x, placePos.y, placePos.z);
-      if (existing !== 0) return;
-      this.world.setBlockGlobal(placePos.x, placePos.y, placePos.z, BlockRegistry.idOf(heldItem.blockName));
-      this.player.inventory.removeFromSlot(this.player.inventory.selectedHotbar, 1);
+      this._placeBlock(heldItem.blockName, 'main');
+      return;
+    }
+    if (offhandItem?.blockName) {
+      this._placeBlock(offhandItem.blockName, 'off');
+    }
+  }
+
+  /** Places a block against the targeted face, consuming it from the given hand. */
+  _placeBlock(blockName, hand) {
+    const placePos = {
+      x: this.target.x + this.target.face[0],
+      y: this.target.y + this.target.face[1],
+      z: this.target.z + this.target.face[2]
+    };
+    if (this._collidesPlayer(placePos)) return;
+    if (this.world.getBlockGlobal(placePos.x, placePos.y, placePos.z) !== 0) return;
+
+    this.world.setBlockGlobal(placePos.x, placePos.y, placePos.z, BlockRegistry.idOf(blockName));
+    const inv = this.player.inventory;
+    if (hand === 'off') {
+      inv.offhand.count -= 1;
+      if (inv.offhand.count <= 0) inv.offhand = null;
+      globalEvents.emit('inventory:changed');
+    } else {
+      inv.removeFromSlot(inv.selectedHotbar, 1);
     }
   }
 

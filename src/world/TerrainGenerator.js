@@ -23,6 +23,12 @@ const CAVERN_THRESHOLD = 0.34;
 const CAVERN_MIN_Y = 8;
 const CAVERN_MAX_Y = 42;
 
+// Per-eligible-cell chance for cave plants. Only cells that are cave air with
+// a stone floor (or ceiling) are eligible, which is a small slice of the
+// underground, so these read higher than they look.
+const CAVE_FLORA_CHANCE = 0.06;
+const CAVE_VINE_CHANCE = 0.05;
+
 const ORE_VEINS = [
   { block: 'char_seam', minY: 5, maxY: 100, chance: 0.02, size: [4, 9] },
   { block: 'ruddle_ore', minY: 5, maxY: 70, chance: 0.012, size: [3, 6] },
@@ -200,6 +206,7 @@ export class TerrainGenerator {
     }
 
     this._scatterOres(chunk, baseX, baseZ, stoneId);
+    this._scatterCaveFlora(chunk, baseX, baseZ, stoneId);
     this._placeStructures(chunk, baseX, baseZ);
     chunk.generated = true;
   }
@@ -235,6 +242,47 @@ export class TerrainGenerator {
           const x = lx + dx, z = lz + dz, y = topY + dy;
           if (x < 0 || x >= CHUNK_SIZE_X || z < 0 || z >= CHUNK_SIZE_Z || y >= CHUNK_HEIGHT) continue;
           if (chunk.getBlock(x, y, z) === 0) chunk.setBlock(x, y, z, leavesId, { recordDiff: false });
+        }
+      }
+    }
+  }
+
+  /**
+   * Seeds carved-out cave space with flora: plants that stand on a stone
+   * floor, and Dripvine hanging from a stone ceiling. Runs after carving and
+   * ore placement so it only ever sees real cave air. Glowcap and Cinderbloom
+   * emit light, so caves are partly lit by their own growth.
+   */
+  _scatterCaveFlora(chunk, baseX, baseZ, stoneId) {
+    const flora = this.isEmber
+      ? { floor: ['cinderbloom'], ceiling: [] }
+      : { floor: ['glowcap', 'duskcap', 'cavefern'], ceiling: ['dripvine'] };
+    const floorIds = flora.floor.map((n) => BlockRegistry.idOf(n));
+    const ceilingIds = flora.ceiling.map((n) => BlockRegistry.idOf(n));
+    const topOfCaves = Math.min(CAVERN_MAX_Y + 12, CHUNK_HEIGHT - 1);
+
+    for (let lz = 0; lz < CHUNK_SIZE_Z; lz++) {
+      for (let lx = 0; lx < CHUNK_SIZE_X; lx++) {
+        const wx = baseX + lx, wz = baseZ + lz;
+        for (let y = 5; y < topOfCaves; y++) {
+          if (chunk.getBlock(lx, y, lz) !== 0) continue;
+
+          const below = chunk.getBlock(lx, y - 1, lz);
+          if (below === stoneId && chunk.getBlock(lx, y + 1, lz) === 0) {
+            const r = hash2D(wx * 5 + y, wz * 3 - y, this.seed ^ 0xf10a);
+            if (r < CAVE_FLORA_CHANCE) {
+              const pick = floorIds[Math.floor(hash2D(wz, wx + y, this.seed) * floorIds.length)];
+              chunk.setBlock(lx, y, lz, pick, { recordDiff: false });
+              continue;
+            }
+          }
+
+          if (ceilingIds.length && chunk.getBlock(lx, y + 1, lz) === stoneId) {
+            const r = hash2D(wx * 7 - y, wz * 11 + y, this.seed ^ 0x2c11);
+            if (r < CAVE_VINE_CHANCE) {
+              chunk.setBlock(lx, y, lz, ceilingIds[0], { recordDiff: false });
+            }
+          }
         }
       }
     }

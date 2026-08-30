@@ -12,6 +12,7 @@ import { Interaction } from '../player/Interaction.js';
 import { SurvivalSystem } from '../player/SurvivalSystem.js';
 import { EntityManager } from '../entities/EntityManager.js';
 import { ItemRegistry } from '../items/ItemRegistry.js';
+import { BlockRegistry } from '../blocks/BlockRegistry.js';
 import { rollLoot } from '../world/Structures.js';
 import { getInfusionLevel } from '../magic/InfusionSystem.js';
 
@@ -218,22 +219,46 @@ export class Game {
     if (this._autosaveTimer <= 0) { this._autosaveTimer = AUTOSAVE_INTERVAL; this.save(); }
   }
 
+  /**
+   * Lights the area around the player from either an Emberlight infusion or a
+   * light-emitting block carried in hand — carrying torches in the offhand is
+   * the practical way to see while mining with a pickaxe.
+   */
   _updateEmberlight() {
+    const inv = this.player.inventory;
     let tier = 0;
-    const held = this.player.inventory.getSelected();
+    const held = inv.getSelected();
     if (held) tier = Math.max(tier, getInfusionLevel(held, 'emberlight'));
-    for (const item of Object.values(this.player.inventory.equipment)) tier = Math.max(tier, getInfusionLevel(item, 'emberlight'));
-    this._emberLight.intensity = tier > 0 ? 1.4 : 0;
+    for (const item of Object.values(inv.equipment)) tier = Math.max(tier, getInfusionLevel(item, 'emberlight'));
+
+    let carriedGlow = 0;
+    for (const stack of [held, inv.offhand]) {
+      const blockName = stack && ItemRegistry.get(stack.id)?.blockName;
+      if (!blockName) continue;
+      carriedGlow = Math.max(carriedGlow, BlockRegistry.byName(blockName)?.lightEmission ?? 0);
+    }
+
+    const intensity = Math.max(tier > 0 ? 1.4 : 0, carriedGlow / 15 * 1.2);
+    this._emberLight.intensity = intensity;
+    this._emberLight.distance = carriedGlow > 0 ? 12 : 8;
     this._emberLight.position.copy(this.camera.position);
   }
 
   // ------------------------------------------------------------- eating
-  _eatItem(item) {
-    const slotIndex = this.player.inventory.selectedHotbar;
-    const slot = this.player.inventory.slots[slotIndex];
+  _eatItem({ item, hand }) {
+    const inv = this.player.inventory;
+    if (hand === 'off') {
+      if (!inv.offhand) return;
+      this.player.eat(item.food);
+      inv.offhand.count -= 1;
+      if (inv.offhand.count <= 0) inv.offhand = null;
+      globalEvents.emit('inventory:changed');
+      return;
+    }
+    const slot = inv.slots[inv.selectedHotbar];
     if (!slot) return;
     this.player.eat(item.food);
-    this.player.inventory.removeFromSlot(slotIndex, 1);
+    inv.removeFromSlot(inv.selectedHotbar, 1);
   }
 
   // ------------------------------------------------------------- workstations

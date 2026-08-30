@@ -11,6 +11,12 @@ const SPAWN_INTERVAL = 2.5;
 const SPAWN_MIN_DIST = 12;
 const SPAWN_MAX_DIST = 28;
 const DESPAWN_DIST = 44;
+// Cave spawning: closer than surface spawning, since sight lines underground
+// are short and mobs spawning 28 blocks away would never be found.
+const CAVE_SPAWN_MIN_DIST = 9;
+const CAVE_SPAWN_MAX_DIST = 20;
+const CAVE_SPAWN_MIN_DEPTH = 6; // blocks below the local surface
+const CAVE_SPAWN_MAX_LIGHT = 8; // torch-lit areas stay clear
 const DROP_LIFETIME = 300;
 const PICKUP_RADIUS = 1.3;
 const ATTACK_COOLDOWN_BASE = 0.55;
@@ -93,6 +99,11 @@ export class EntityManager {
     this._spawnTimer = SPAWN_INTERVAL;
     if (this.mobs.length >= this.world.dimension.spawnMobCap) return;
 
+    // Underground first: spawning only ever used the surface height, so a
+    // player deep in a cave had every mob spawn far above them and never met
+    // anything. Cave spawns are attempted around the player's own depth.
+    if (this._trySpawnUnderground(player)) return;
+
     const angle = Math.random() * Math.PI * 2;
     const dist = SPAWN_MIN_DIST + Math.random() * (SPAWN_MAX_DIST - SPAWN_MIN_DIST);
     const wx = Math.floor(player.position.x + Math.cos(angle) * dist);
@@ -112,6 +123,56 @@ export class EntityManager {
     if (!pool.length) return;
     const speciesId = pool[Math.floor(Math.random() * pool.length)];
     this.spawnMob(speciesId, { x: wx + 0.5, y: spawnY, z: wz + 0.5 });
+  }
+
+  /**
+   * Looks for a dark, enclosed pocket near the player's own depth and spawns
+   * a cave species there. Returns true if it spawned something.
+   *
+   * Only fires when the player is actually below ground, and only in cells
+   * with no skylight and little block light — so torches genuinely keep a
+   * mined-out area clear, and the display brightness (which is deliberately
+   * high everywhere) has no effect on it.
+   */
+  _trySpawnUnderground(player) {
+    const caveMobs = this.world.dimension.caveMobs;
+    if (!caveMobs?.length) return false;
+
+    const px = Math.floor(player.position.x), pz = Math.floor(player.position.z);
+    const surface = this.world.heightAtWorld(px, pz);
+    const playerDepth = surface - player.position.y;
+    if (playerDepth < CAVE_SPAWN_MIN_DEPTH) return false;
+
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = CAVE_SPAWN_MIN_DIST + Math.random() * (CAVE_SPAWN_MAX_DIST - CAVE_SPAWN_MIN_DIST);
+      const wx = Math.floor(player.position.x + Math.cos(angle) * dist);
+      const wz = Math.floor(player.position.z + Math.sin(angle) * dist);
+
+      const chunk = this.world.getChunk(Math.floor(wx / 16), Math.floor(wz / 16));
+      if (!chunk?.generated) continue;
+
+      // Scan the column around the player's depth rather than guessing a Y:
+      // picking a random point in 3D underground lands in solid rock ~88% of
+      // the time, so cave spawns almost never fired.
+      const from = Math.max(6, Math.floor(player.position.y) - 8);
+      const to = Math.floor(player.position.y) + 8;
+      const startY = from + Math.floor(Math.random() * Math.max(1, to - from));
+
+      for (let step = 0; step <= to - from; step++) {
+        const y = from + ((startY - from + step) % (to - from + 1));
+        if (!this.world.isSolidGlobal(wx, y - 1, wz)) continue;
+        if (this.world.getBlockGlobal(wx, y, wz) !== 0) continue;
+        if (this.world.getBlockGlobal(wx, y + 1, wz) !== 0) continue;
+        if (this.world.getSkyLightGlobal(wx, y, wz) > 2) continue;
+        if (this.world.getBlockLightGlobal(wx, y, wz) >= CAVE_SPAWN_MAX_LIGHT) continue;
+
+        const speciesId = caveMobs[Math.floor(Math.random() * caveMobs.length)];
+        this.spawnMob(speciesId, { x: wx + 0.5, y, z: wz + 0.5 });
+        return true;
+      }
+    }
+    return false;
   }
 
   _updateMobs(dt, player) {

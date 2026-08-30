@@ -5,6 +5,8 @@ import { settings } from './core/Settings.js';
 import { InputManager } from './core/InputManager.js';
 import { MainMenu } from './ui/MainMenu.js';
 import { Game } from './core/Game.js';
+import { BlockRegistry } from './blocks/BlockRegistry.js';
+import { ItemRegistry } from './items/ItemRegistry.js';
 
 async function main() {
   await settings.load();
@@ -24,7 +26,14 @@ async function main() {
     }
   });
 
-  window.__mineblock = { get game() { return game; } };
+  // Debug handle: the in-game overlays (P/L/O) cover the common cases, but
+  // exposing the live game and the registries makes it possible to inspect
+  // world state from the console or an automated check.
+  window.__mineblock = {
+    get game() { return game; },
+    blocks: BlockRegistry,
+    items: ItemRegistry
+  };
 }
 
 main();

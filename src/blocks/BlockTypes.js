@@ -163,6 +163,36 @@ export const SPINEPAD = reg({
 });
 
 // ---------------------------------------------------------------------- //
+// Cave flora — grows underground, never on the surface. Glowcap and
+// Cinderbloom emit light, so a cave with them is partly self-lit.
+// ---------------------------------------------------------------------- //
+export const GLOWCAP = reg({
+  name: 'glowcap', displayName: 'Glowcap', category: 'flora', hardness: 0, toolType: 'none',
+  solid: false, transparent: true, plant: true, lightEmission: 9,
+  texture: { all: T('flower', '#6fe3d0', { grain: '#3f8f86' }) }
+});
+export const DUSKCAP = reg({
+  name: 'duskcap', displayName: 'Duskcap', category: 'flora', hardness: 0, toolType: 'none',
+  solid: false, transparent: true, plant: true,
+  texture: { all: T('flower', '#9a5f7a', { grain: '#5f3a4c' }) }
+});
+export const CAVEFERN = reg({
+  name: 'cavefern', displayName: 'Cavefern', category: 'flora', hardness: 0, toolType: 'none',
+  solid: false, transparent: true, plant: true,
+  texture: { all: T('sprig', '#3f6a52', { grain: '#2f5040' }) }
+});
+export const DRIPVINE = reg({
+  name: 'dripvine', displayName: 'Dripvine', category: 'flora', hardness: 0, toolType: 'none',
+  solid: false, transparent: true, plant: true,
+  texture: { all: T('sprig', '#4a6a4f', { grain: '#35503a' }) }
+});
+export const CINDERBLOOM = reg({
+  name: 'cinderbloom', displayName: 'Cinderbloom', category: 'flora', hardness: 0, toolType: 'none',
+  solid: false, transparent: true, plant: true, lightEmission: 7,
+  texture: { all: T('flower', '#ff8a3f', { grain: '#8a3a1f' }) }
+});
+
+// ---------------------------------------------------------------------- //
 // Liquids
 // ---------------------------------------------------------------------- //
 export const WATER = reg({

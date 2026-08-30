@@ -33,6 +33,23 @@ export const CREATURES = {
     hostile: true, maxHealth: 13, speed: 2.4, damage: 3, aggroRange: 13,
     drops: [{ id: 'fiber', count: [1, 3] }], xp: 4
   },
+  // --- Cave dwellers (spawn underground, in the dark) ---
+  gloomlurker: {
+    id: 'gloomlurker', displayName: 'Gloomlurker', bodyType: 'blob', color: 0x2b2438, accentColor: 0x8f6fd0,
+    hostile: true, maxHealth: 12, speed: 3.0, damage: 3, aggroRange: 15,
+    drops: [{ id: 'fiber', count: [1, 2] }, { id: 'infusion_dust', count: [0, 1], chance: 0.25 }], xp: 6
+  },
+  rockjaw: {
+    id: 'rockjaw', displayName: 'Rockjaw', bodyType: 'quad', color: 0x6e6e73, accentColor: 0x4a4a4f,
+    hostile: true, maxHealth: 26, speed: 1.7, damage: 5, aggroRange: 12,
+    drops: [{ id: 'cobbled_stone', count: [2, 4] }, { id: 'ruddle_chunk', count: [0, 2] }], xp: 8
+  },
+  palegrub: {
+    id: 'palegrub', displayName: 'Palegrub', bodyType: 'blob', color: 0xd8cfc0, accentColor: 0x9a8f80,
+    hostile: false, maxHealth: 8, speed: 1.4, damage: 0, aggroRange: 0,
+    drops: [{ id: 'raw_meat', count: [1, 2] }], xp: 2
+  },
+
   // --- Ember Expanse ---
   emberling: {
     id: 'emberling', displayName: 'Emberling', bodyType: 'blob', color: 0xd8531f, accentColor: 0xffcf5c,
