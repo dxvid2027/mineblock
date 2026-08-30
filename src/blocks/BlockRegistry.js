@@ -22,6 +22,7 @@ class BlockRegistryClass {
       plant: def.plant ?? false,
       gravity: def.gravity ?? false,
       hardness: def.hardness ?? 1,
+      unbreakable: def.unbreakable ?? false,
       toolType: def.toolType ?? 'none',
       minToolTier: def.minToolTier ?? 0,
       lightEmission: def.lightEmission ?? 0,

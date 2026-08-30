@@ -34,6 +34,11 @@ code were copied from any existing game.
   planks as sawn boards rather than as tinted squares. Items are drawn as
   shaded sprites with a dark outline, and a block in the inventory is shown as
   a small isometric cube wearing its own top and side textures.
+- **Death costs you**: at zero health everything you carried — pack, offhand
+  and worn armor — falls where you died, keeping its durability and
+  Infusions, and you respawn empty-handed. The bottom layer of every
+  dimension is **Worldroot**, which nothing breaks, so digging down can no
+  longer drop you out of the world.
 - **Visible mining**: the block under the crosshair is outlined, cracks spread
   across it in ten stages as you break it, chips fly off the face you are
   striking, and it bursts into debris in its own colors when it gives way
@@ -98,6 +103,10 @@ item and recipe tables, so a tier gate or recipe change that makes any step
 unreachable fails the test suite rather than stranding a player mid-game.
 
 ### Reading a fight
+
+The HUD stacks bottom-up: hotbar, then health, then armor. Health and armor
+each show their exact figure beside the icons, because half a heart is hard
+to judge at a glance and it is the number that decides whether to run.
 
 Every creature carries a small health bar over its head, colored green /
 amber / red as it drops, drawn depth-tested so it cannot give away what is
@@ -284,6 +293,7 @@ it.
 | Crouch | `Ctrl` |
 | Break block | Hold Left Click |
 | Place block / interact | Right Click |
+| Drop held item | `Q` (whole stack: `Shift`+`Q`) |
 | Inventory | `E` |
 | Hotbar select | `1`–`9` or scroll |
 | Pause | `Esc` |

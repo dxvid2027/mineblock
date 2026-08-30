@@ -8,6 +8,12 @@ export function heartIconMarkup(stateClass) {
   return `<svg viewBox="0 0 20 20" class="bar-icon heart ${stateClass}"><path d="${HEART_PATH}"/></svg>`;
 }
 
+export function shieldIconMarkup(stateClass) {
+  return `<svg viewBox="0 0 20 20" class="bar-icon armor ${stateClass}">
+    <path d="M10 1.4 L17.2 4.2 V9.6 C17.2 14.2 13.8 17.4 10 18.6 C6.2 17.4 2.8 14.2 2.8 9.6 V4.2 Z"/>
+  </svg>`;
+}
+
 export function drumstickIconMarkup(stateClass) {
   return `<svg viewBox="0 0 20 20" class="bar-icon hunger ${stateClass}">
     <rect x="0.8" y="11.3" width="9.6" height="3.1" rx="1.55" transform="rotate(-38 5.6 12.85)"/>

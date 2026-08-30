@@ -65,6 +65,14 @@ export const BOG_MUD = reg({
   name: 'bog_mud', displayName: 'Bog Mud', category: 'terrain', hardness: 0.5, toolType: 'shovel',
   texture: { all: T('grain', '#4a4032', { grain: '#3c3427' }) }
 });
+// The floor of the world. Mining through the bottom layer used to drop you
+// out of the world entirely, so the last layer is this: nothing breaks it,
+// no tool tier helps, and caves never carve it.
+export const WORLDROOT = reg({
+  name: 'worldroot', displayName: 'Worldroot', category: 'terrain',
+  hardness: Infinity, unbreakable: true, toolType: 'none', drops: null,
+  texture: { all: T('ore', '#3b3a44', { grain: '#6f6a7d' }) }
+});
 export const MOSSY_STONE = reg({
   name: 'mossy_stone', displayName: 'Mossy Stone', category: 'terrain', hardness: 1.5, toolType: 'pickaxe',
   texture: { all: T('speckle', '#748a63', { grain: '#5f7350' }) }

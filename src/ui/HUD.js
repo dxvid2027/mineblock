@@ -1,5 +1,5 @@
 import { renderSlotContent, makeSlotEl } from './slotHelpers.js';
-import { heartIconMarkup, drumstickIconMarkup } from './icons.js';
+import { heartIconMarkup, drumstickIconMarkup, shieldIconMarkup } from './icons.js';
 import { globalEvents } from '../core/EventBus.js';
 import { BlockRegistry } from '../blocks/BlockRegistry.js';
 
@@ -23,6 +23,7 @@ export class HUD {
       <div class="interact-hint interactive" id="hud-hint" style="display:none;"></div>
       <div class="toast-log" id="hud-toasts"></div>
       <div class="hud-dock">
+        <div class="armor-row" id="hud-armor"></div>
         <div class="hearts-row" id="hud-hearts"></div>
         <div class="hunger-row" id="hud-hunger"></div>
         <div class="hotbar" id="hud-hotbar"></div>
@@ -92,7 +93,28 @@ export class HUD {
       const half = !filled && p.health > i * 2;
       heartsHtml += heartIconMarkup(filled ? 'full' : half ? 'half' : 'empty');
     }
-    hearts.innerHTML = heartsHtml;
+    // The exact number, to the left of the hearts: half a heart is hard to
+    // judge at a glance. It goes in front rather than behind because the
+    // hunger row grows in from the right and the two would collide.
+    hearts.innerHTML = `<span class="bar-value">${Math.ceil(p.health)}/${p.maxHealth}</span>` + heartsHtml;
+
+    // Armor sits above the hearts, one shield per two points of defense,
+    // and disappears entirely when nothing is worn.
+    const armorRow = this.el.querySelector('#hud-armor');
+    const { defense, toughness } = p.inventory.totalDefense();
+    const armorPoints = defense + toughness;
+    if (armorPoints <= 0) {
+      armorRow.innerHTML = '';
+      armorRow.style.display = 'none';
+    } else {
+      armorRow.style.display = '';
+      const shields = Math.ceil(armorPoints / 2);
+      let armorHtml = '';
+      for (let i = 0; i < shields; i++) {
+        armorHtml += shieldIconMarkup(armorPoints >= (i + 1) * 2 ? 'full' : 'half');
+      }
+      armorRow.innerHTML = `<span class="bar-value">${armorPoints}</span>` + armorHtml;
+    }
 
     const hungerCount = Math.ceil(p.maxHunger / 2);
     let hungerHtml = '';

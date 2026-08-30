@@ -36,13 +36,21 @@ function spriteForItem(itemId) {
 
 /** A pickup lying in the world: a floating item icon the player can walk into. */
 class ItemDrop extends Entity {
-  constructor(itemId, count, position) {
+  constructor(itemId, count, position, { pickupDelay = 0, velocity = null, durability, infusions } = {}) {
     super({ width: 0.35, height: 0.35, maxHealth: 1 });
     this.itemId = itemId;
     this.count = count;
+    // Carried through the drop so a worn, infused sword comes back exactly
+    // as it went in rather than as a pristine one.
+    this.durability = durability;
+    this.infusions = infusions;
     this.position.set(position.x, position.y, position.z);
-    this.velocity.set((Math.random() - 0.5) * 1.5, 3, (Math.random() - 0.5) * 1.5);
+    if (velocity) this.velocity.set(velocity.x, velocity.y, velocity.z);
+    else this.velocity.set((Math.random() - 0.5) * 1.5, 3, (Math.random() - 0.5) * 1.5);
     this.age = 0;
+    // Anything the player threw out has to be un-collectable for a moment,
+    // or they would walk straight back into it on the same frame.
+    this.pickupDelay = pickupDelay;
     this.mesh = spriteForItem(itemId);
   }
 }
@@ -61,7 +69,7 @@ export class EntityManager {
     this.bossAlive = false;
     this.boss = null;
 
-    this._offDrop = globalEvents.on('item:drop', ({ id, count, position }) => this.spawnDrop(id, count, position));
+    this._offDrop = globalEvents.on('item:drop', ({ id, count, position, ...options }) => this.spawnDrop(id, count, position, options));
   }
 
   setWorld(world) {
@@ -72,9 +80,9 @@ export class EntityManager {
     this.drops = [];
   }
 
-  spawnDrop(itemId, count, position) {
+  spawnDrop(itemId, count, position, options) {
     if (!ItemRegistry.get(itemId)) return;
-    const drop = new ItemDrop(itemId, count, position);
+    const drop = new ItemDrop(itemId, count, position, options);
     this.group.add(drop.mesh);
     this.drops.push(drop);
   }
@@ -222,8 +230,8 @@ export class EntityManager {
         this.drops.splice(i, 1);
         continue;
       }
-      if (drop.distanceTo(player.position) < PICKUP_RADIUS) {
-        const leftover = player.inventory.addItem(drop.itemId, drop.count);
+      if (drop.age >= drop.pickupDelay && drop.distanceTo(player.position) < PICKUP_RADIUS) {
+        const leftover = player.inventory.addItem(drop.itemId, drop.count, drop.durability, drop.infusions);
         if (leftover < drop.count) {
           globalEvents.emit('ui:toast', `+${drop.count - leftover} ${ItemRegistry.get(drop.itemId)?.displayName ?? drop.itemId}`);
         }

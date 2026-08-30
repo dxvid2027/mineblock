@@ -134,6 +134,17 @@ export class Player extends Entity {
     globalEvents.emit('player:healthChanged');
   }
 
+  /**
+   * Entity.die() only lowers a flag, which is all a creature needs. The
+   * player's death has to be announced: the game listens for this to scatter
+   * the inventory and put up the death screen. Without it the player sat at
+   * zero health, not alive and not dead, with the world still running.
+   */
+  die() {
+    super.die();
+    globalEvents.emit('player:died');
+  }
+
   respawn() {
     this.health = this.maxHealth;
     this.hunger = this.maxHunger;

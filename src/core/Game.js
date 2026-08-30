@@ -186,6 +186,7 @@ export class Game {
     for (let i = 0; i < 9; i++) {
       if (this.input.keyWasPressed(settings.get('keybinds')[`hotbar${i + 1}`])) this.player.inventory.selectHotbar(i);
     }
+    if (this.input.wasPressed('drop')) this._dropHeldItem(this.input.isKeyDown('ShiftLeft') || this.input.isKeyDown('ShiftRight'));
 
     // Debug toggles: P = chunk boundaries, L = mob hitboxes, O = coordinates/info panel.
     if (this.input.keyWasPressed('KeyP')) {
@@ -279,6 +280,62 @@ export class Game {
     if (!slot) return;
     this.player.eat(item.food);
     inv.removeFromSlot(inv.selectedHotbar, 1);
+  }
+
+  /**
+   * Throws the selected item out in front of the player: one with the drop
+   * key, the whole stack with shift held. It is tossed along the view
+   * direction and cannot be picked up again for a moment, or the player
+   * would collect it on the very next frame.
+   */
+  _dropHeldItem(wholeStack) {
+    const inv = this.player.inventory;
+    const slot = inv.getSelected();
+    if (!slot) return;
+    const count = wholeStack ? slot.count : 1;
+    const { durability, infusions } = slot;
+    const id = slot.id;
+    inv.removeFromSlot(inv.selectedHotbar, count);
+
+    const dir = new THREE.Vector3();
+    this.camera.getWorldDirection(dir);
+    globalEvents.emit('item:drop', {
+      id, count, durability, infusions,
+      position: {
+        x: this.player.position.x + dir.x * 0.6,
+        y: this.player.position.y + 1.2,
+        z: this.player.position.z + dir.z * 0.6
+      },
+      velocity: { x: dir.x * 5, y: 2.4, z: dir.z * 5 },
+      pickupDelay: 1.2
+    });
+  }
+
+  /**
+   * Everything the player was carrying falls where they died — pack,
+   * offhand and worn armor alike. Dropping it here rather than on respawn
+   * means it lands at the place of death, which is the point of losing it.
+   */
+  _scatterInventoryOnDeath() {
+    const inv = this.player.inventory;
+    const at = {
+      x: this.player.position.x,
+      y: this.player.position.y + 0.5,
+      z: this.player.position.z
+    };
+    const toss = (stack) => {
+      if (!stack) return;
+      globalEvents.emit('item:drop', {
+        id: stack.id, count: stack.count ?? 1,
+        durability: stack.durability, infusions: stack.infusions,
+        position: at, pickupDelay: 2
+      });
+    };
+
+    for (let i = 0; i < inv.slots.length; i++) { toss(inv.slots[i]); inv.slots[i] = null; }
+    toss(inv.offhand); inv.offhand = null;
+    for (const key of Object.keys(inv.equipment)) { toss(inv.equipment[key]); inv.equipment[key] = null; }
+    globalEvents.emit('inventory:changed');
   }
 
   // ------------------------------------------------------------- workstations
@@ -414,6 +471,7 @@ export class Game {
   _onPlayerDied() {
     if (this.state !== 'playing') return;
     this.state = 'dead';
+    this._scatterInventoryOnDeath();
     this.input.releasePointerLock();
     this.deathScreen = new DeathScreen(this.uiRoot, {
       onRespawn: () => {

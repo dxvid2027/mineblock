@@ -170,6 +170,7 @@ export class TerrainGenerator {
     const airId = 0;
     const liquidId = BlockRegistry.idOf(this.liquidBlock);
     const stoneId = BlockRegistry.idOf(this.isEmber ? 'ashstone' : 'stone');
+    const worldrootId = BlockRegistry.idOf('worldroot');
 
     for (let lz = 0; lz < CHUNK_SIZE_Z; lz++) {
       for (let lx = 0; lx < CHUNK_SIZE_X; lx++) {
@@ -190,7 +191,11 @@ export class TerrainGenerator {
 
         for (let y = 0; y < CHUNK_HEIGHT; y++) {
           let id = airId;
-          if (y === 0) id = stoneId;
+          // The bottom two layers are the floor of the world: the very last
+          // one always, the one above it in a ragged band. Digging through
+          // the old plain stone here dropped the player out of the world.
+          if (y === 0) id = worldrootId;
+          else if (y === 1 && hash2D(wx, wz, this.seed ^ 0x0f1006) < 0.65) id = worldrootId;
           else if (y < crustBottom) id = stoneId;
           else if (y < height) id = subsurfaceId;
           else if (y === height) id = surfaceId;

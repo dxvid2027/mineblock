@@ -238,29 +238,50 @@ button {
    own size is just the hotbar's, since the rest are absolutely positioned. */
 .hud-dock {
   position: absolute;
-  bottom: 16px;
+  /* Clear of the bottom edge, and of a phone or tablet's home indicator:
+     the hotbar used to be clipped by it. */
+  bottom: calc(30px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   width: max-content;
 }
 
-.hearts-row, .hunger-row {
+.hearts-row, .hunger-row, .armor-row {
   position: absolute;
   bottom: 100%;
   margin-bottom: 6px;
   display: flex;
+  align-items: center;
   flex-wrap: wrap-reverse;
   gap: 3px;
-  max-width: 230px;
+  /* Wide enough for ten icons and the figure beside them on one line; any
+     narrower and the number wraps onto a line of its own. */
+  max-width: 330px;
 }
 .hearts-row { left: 0; }
 .hunger-row { right: 0; justify-content: flex-end; }
+/* Armor stacks above the hearts, so the three rows read bottom-up as
+   hotbar, health, protection. */
+.armor-row { left: 0; bottom: calc(100% + 26px); }
+
+/* The exact figure beside a row of icons. Half a heart is hard to judge at a
+   glance and this is the number that decides whether to run. */
+.bar-value {
+  margin-right: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--mb-text);
+  text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 1px 0 #fff;
+}
 
 .bar-icon {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   filter: drop-shadow(0 1px 1.5px rgba(28,38,66,0.35));
 }
+.bar-icon.armor path { fill: #7f8ba8; }
+.bar-icon.armor.half path { fill: #b3bccd; }
+
 .bar-icon.heart path,
 .bar-icon.hunger rect,
 .bar-icon.hunger circle,
@@ -530,6 +551,14 @@ button {
   color: var(--mb-text-dim);
 }
 .inv-tooltip .stat b { color: var(--mb-text); font-weight: 700; }
+
+/* While the camera is being steered the pointer must not be visible: where
+   Pointer Lock is unavailable (Safari on iPadOS) the cursor is not captured,
+   so without this it drifts across the screen as the view turns. The rule is
+   deliberately blunt — it has to beat the `cursor: pointer` on hotbar slots,
+   which sit under the pointer during normal play. */
+html.mb-look-active,
+html.mb-look-active * { cursor: none !important; }
 
 /* ---------- Pointer / gesture behaviour ----------
    The game owns every gesture on the play surface: without this, Safari

@@ -135,9 +135,14 @@ export class InputManager {
     this.mouseDY += push(this._cursorY, h) * EDGE_TURN_SPEED * dt;
   }
 
-  /** Hide the cursor while the camera is being steered, show it otherwise. */
+  /**
+   * Hide the pointer while the camera is being steered, show it otherwise.
+   * A class on the root element rather than a style on the body: the rule it
+   * carries has to beat `cursor: pointer` on the hotbar slots the pointer
+   * sits over, which a body style would lose to.
+   */
   _applyCursorVisibility() {
-    document.body.style.cursor = this.lookActive ? 'none' : 'default';
+    document.documentElement.classList.toggle('mb-look-active', this.lookActive);
   }
 
   isDown(action) {

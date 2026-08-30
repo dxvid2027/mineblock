@@ -12,6 +12,7 @@ const STEP = 0.04;
 // always a speed bonus, never a hard requirement, so bare hands can still
 // gather wood, dirt, sand and crops (just more slowly).
 function miningTime(block, toolDef, heldSlot) {
+  if (block.unbreakable) return Infinity;
   if (block.hardness <= 0) return 0.08;
   const gated = block.toolType === 'pickaxe';
   const correctType = toolDef?.type === block.toolType;
@@ -90,6 +91,13 @@ export class Interaction {
     const heldSlot = this.player.inventory.getSelected();
     const time = miningTime(block, toolDef, heldSlot);
 
+    // Nothing to show and nothing to progress on a block that cannot break;
+    // an Infinity target would leave the crack overlay stuck at stage zero.
+    if (!Number.isFinite(time)) {
+      this.breaking = null;
+      globalEvents.emit('interact:breakProgress', null);
+      return;
+    }
     if (!this.breaking || this.breaking.key !== key) {
       this.breaking = { key, progress: 0, time };
     }
