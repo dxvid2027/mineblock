@@ -164,9 +164,17 @@ npm run deploy          # builds, then deploys dist/
 ```
 
 **Option C — GitHub Actions:** `.github/workflows/deploy.yml` builds, runs the
-tests and deploys on every push. Add two repository secrets and it takes over:
+tests and deploys on every push to the default branch. Add two repository
+secrets (*Settings → Secrets and variables → Actions*) and it takes over:
 `CLOUDFLARE_API_TOKEN` (a token with *Workers Scripts: Edit*) and
-`CLOUDFLARE_ACCOUNT_ID`.
+`CLOUDFLARE_ACCOUNT_ID` (Cloudflare dashboard sidebar). Without them a push
+still builds and tests but publishes nothing; running the workflow by hand
+(*Actions → Deploy to Cloudflare → Run workflow*) fails loudly instead, so a
+requested deploy never ends green without having happened.
+
+> The `on: push:` branch list must contain this repository's **default
+> branch**. A workflow listing only `main` on a repo whose default branch is
+> named something else never runs at all, and reports nothing while doing so.
 
 Validate the deploy configuration without deploying anything:
 
