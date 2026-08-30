@@ -3,7 +3,7 @@
 MineBlock is a complete, original single-player voxel sandbox survival game.
 It runs as a desktop app (Windows, macOS, Linux) via
 [Electron](https://www.electronjs.org/), and as a website playable by touch on
-an iPad — the same build, deployed to Cloudflare Pages. It is rendered with
+an iPad — the same build, deployed to Cloudflare. It is rendered with
 [three.js](https://threejs.org/). Every block, item, creature, dimension,
 texture and system in this project is original content — no assets, names, or
 code were copied from any existing game.
@@ -90,9 +90,9 @@ npm run preview:web    # serve dist/ at http://localhost:4173
 npm test               # data-integrity and progression checks
 ```
 
-`npm run build` is deliberately the *web* build: hosting platforms, including
-Cloudflare Pages, auto-detect and run that script, and packaging a desktop
-installer there both fails and makes no sense. Desktop packaging is explicit:
+`npm run build` is deliberately the *web* build: hosting platforms auto-detect
+and run that script, and packaging a desktop installer there both fails and
+makes no sense. Desktop packaging is explicit:
 
 ```bash
 npm run build:desktop  # electron-builder output lands in release/
@@ -123,48 +123,56 @@ icon, a fullscreen window with no browser chrome, and offline play: a service
 worker pre-caches the whole bundle at install, so after the first visit the
 game runs with no network at all. Worlds are saved in the browser, on device.
 
-## Publishing to Cloudflare Pages
+## Publishing to Cloudflare
 
 The game is completely static — terrain is generated from a seed in the
-browser and saves live in local storage — so it needs no server, database or
-Worker.
+browser and saves live in local storage — so nothing runs server-side.
+`wrangler.jsonc` deploys it as a **Worker serving static assets**: there is no
+Worker script, just `assets.directory` pointing at `dist/`. That matches what
+Cloudflare's dashboard creates today, which is a Worker rather than a Pages
+project.
+
+> **`name` in `wrangler.jsonc` must match your Worker's name**, otherwise the
+> deploy targets or creates a different one.
 
 **Option A — connect the repository** (auto-deploys on every push):
-in the Cloudflare dashboard, *Workers & Pages → Create → Pages → Connect to
-Git*, pick this repo and set
+in the Cloudflare dashboard, *Workers & Pages → Create → Import a repository*,
+pick this repo and set
 
 | Setting | Value |
 | --- | --- |
 | Build command | `npm run build` |
-| Output directory | `dist` |
-| Node version | 22 |
+| Deploy command | `npx wrangler deploy` |
 
 **Option B — deploy from your machine:**
 
 ```bash
 npx wrangler login
-npm run deploy          # builds, then publishes dist/ to Pages
+npm run deploy          # builds, then deploys dist/
 ```
 
 **Option C — GitHub Actions:** `.github/workflows/deploy.yml` builds, runs the
-tests and publishes on every push. Add two repository secrets and it takes
-over: `CLOUDFLARE_API_TOKEN` (a token with *Cloudflare Pages: Edit*) and
+tests and deploys on every push. Add two repository secrets and it takes over:
+`CLOUDFLARE_API_TOKEN` (a token with *Workers Scripts: Edit*) and
 `CLOUDFLARE_ACCOUNT_ID`.
+
+Validate the deploy configuration without deploying anything:
+
+```bash
+npm run build && npx wrangler deploy --dry-run
+```
+
+Using **Cloudflare Pages** instead? Pages ignores `wrangler.jsonc` and needs a
+`wrangler.toml` with `pages_build_output_dir = "dist"` (whose `name` must
+likewise match the Pages project), or just the dashboard's build settings with
+output directory `dist`.
 
 `.node-version` pins Node 22 (Cloudflare's default is older than Vite 5
 supports), and `src/public/_headers` sets long-lived caching for the
 fingerprinted assets while keeping `index.html` and `sw.js` uncached, so a
 deploy reaches players immediately.
 
-There is deliberately no `wrangler.toml`: for the Git integration it adds
-nothing the dashboard does not already set, while binding the repository to
-one exact Pages project name — a mismatch fails the deployment step. The CLI
-deploy names the project explicitly instead, and honours `CF_PAGES_PROJECT`
-if your project is called something else:
 
-```bash
-CF_PAGES_PROJECT=my-project-name npm run deploy
-```
 
 ### If the Cloudflare build fails
 
@@ -189,11 +197,15 @@ npm ci && npm run build
 auto-detects `npm run build`, which builds the website; `npm run build:desktop`
 would try to package an Electron installer and cannot work on a web host.
 
-**Failure during "Deploying".** The build output is well inside every Pages
-limit (13 files, largest ~620 KB, against limits of 20,000 files and 25 MiB
-each), so this is almost always configuration rather than content: a
-`wrangler.toml` whose `name` does not match the Pages project, or a build
-output directory that does not match where the build actually writes (`dist`).
+**Failure during "Deploying", with `Missing entry-point to Worker script or to
+assets directory`.** The deploy step ran `wrangler deploy` without knowing what
+to serve — either `wrangler.jsonc` is missing, or its `assets.directory` does
+not point at the build output. Reproduce it locally with
+`npx wrangler deploy --dry-run`, which validates the configuration and reports
+how many files it found without deploying.
+
+The build output is well inside every limit (13 files, largest ~620 KB), so a
+failure here is configuration rather than content.
 
 **Slow installs.** `electron` and `electron-builder` are development
 dependencies for the desktop app, and Electron's postinstall downloads a
@@ -244,7 +256,7 @@ src/
                      screens, settings, pause/death/victory/loading screens,
                      on-screen touch controls
   public/           Static web assets: icons, PWA manifest, service worker,
-                     Cloudflare Pages headers
+                     Cloudflare asset headers
 tools/              Icon generation and the service-worker build stamp
 tests/              Node test suite (progression, structures, world data,
                      chunk mesher)

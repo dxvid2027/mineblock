@@ -1,12 +1,12 @@
-# Builds the web version and publishes it to Cloudflare Pages on every push
-# to the default branch.
+# Builds the web version and publishes it to Cloudflare on every push to the
+# default branch, as a Worker serving static assets (see wrangler.jsonc).
 #
 # Requires two repository secrets (Settings -> Secrets and variables -> Actions):
-#   CLOUDFLARE_API_TOKEN   a token with the "Cloudflare Pages: Edit" permission
+#   CLOUDFLARE_API_TOKEN   a token with the "Workers Scripts: Edit" permission
 #   CLOUDFLARE_ACCOUNT_ID  from the Cloudflare dashboard sidebar
 #
 # Without those secrets the job is skipped rather than failing the build.
-name: Deploy to Cloudflare Pages
+name: Deploy to Cloudflare
 
 on:
   push:
@@ -36,9 +36,9 @@ jobs:
 
       - run: npm ci
       - run: npm test
-      - run: npm run build:web
+      - run: npm run build
 
-      - name: Publish to Cloudflare Pages
+      - name: Publish to Cloudflare
         if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -46,4 +46,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=mineblock
+          command: deploy

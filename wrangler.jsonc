@@ -1,0 +1,21 @@
+{
+  // Cloudflare Workers configuration for the MineBlock web build.
+  //
+  // The dashboard now creates Workers rather than Pages projects, and a
+  // Worker's deploy step needs to be told what to serve. MineBlock is a fully
+  // static site — the world is generated from a seed in the browser and saves
+  // live in local storage — so there is no Worker script at all: `assets`
+  // alone serves `dist/` straight from Cloudflare's edge.
+  //
+  // `name` MUST match the Worker in your Cloudflare account, or the deploy
+  // creates or targets the wrong one.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mineblock",
+  "compatibility_date": "2025-01-01",
+  "assets": {
+    "directory": "./dist",
+    // The game is one page with no client-side routing; serving index.html
+    // for unknown paths keeps a stray URL from hitting a bare 404.
+    "not_found_handling": "single-page-application"
+  }
+}
