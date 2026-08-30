@@ -16,6 +16,10 @@ export class HUD {
       <div class="dimension-tag" id="hud-dimension"></div>
       <div class="biome-tag" id="hud-biome"></div>
       <div class="clock" id="hud-clock"></div>
+      <div class="boss-bar" id="hud-bossbar" style="display:none;">
+        <div class="boss-name" id="hud-boss-name"></div>
+        <div class="boss-track"><div class="boss-fill" id="hud-boss-fill"></div></div>
+      </div>
       <div class="interact-hint interactive" id="hud-hint" style="display:none;"></div>
       <div class="toast-log" id="hud-toasts"></div>
       <div class="hud-dock">
@@ -77,7 +81,7 @@ export class HUD {
     renderSlotContent(this.offhandEl, inv.offhand);
   }
 
-  update(world, dayNight, interaction) {
+  update(world, dayNight, interaction, boss = null) {
     const p = this.player;
     const hearts = this.el.querySelector('#hud-hearts');
     const hunger = this.el.querySelector('#hud-hunger');
@@ -108,6 +112,8 @@ export class HUD {
     this.el.querySelector('#hud-biome').textContent = biome.displayName;
     this.el.querySelector('#hud-clock').textContent = `${dayNight.formattedClock()} · Day ${dayNight.day}`;
 
+    this._updateBossBar(boss);
+
     const hint = this.el.querySelector('#hud-hint');
     if (interaction.target) {
       const block = BlockRegistry.get(interaction.target.blockId);
@@ -116,6 +122,22 @@ export class HUD {
         hint.textContent = `Right-click to open ${block.displayName}`;
       } else hint.style.display = 'none';
     } else hint.style.display = 'none';
+  }
+
+  /**
+   * The wide bar across the top, shown only while a boss is alive. It is
+   * driven by the live mob rather than an event so it cannot get stuck
+   * showing a boss that has already fallen.
+   */
+  _updateBossBar(boss) {
+    const bar = this.el.querySelector('#hud-bossbar');
+    if (!boss || !boss.alive) { bar.style.display = 'none'; return; }
+    bar.style.display = 'block';
+    this.el.querySelector('#hud-boss-name').textContent = boss.species.displayName;
+    const fraction = Math.max(0, boss.health / boss.maxHealth);
+    const fill = this.el.querySelector('#hud-boss-fill');
+    fill.style.width = `${fraction * 100}%`;
+    fill.classList.toggle('low', fraction < 0.3);
   }
 
   dispose() {

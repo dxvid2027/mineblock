@@ -1,5 +1,6 @@
 import { Entity } from './Entity.js';
 import { Inventory } from '../items/Inventory.js';
+import { ItemRegistry } from '../items/ItemRegistry.js';
 import { globalEvents } from '../core/EventBus.js';
 
 /**
@@ -64,9 +65,68 @@ export class Player extends Entity {
 
   damage(amount, opts) {
     const { defense, toughness } = this.inventory.totalDefense();
-    const reduced = Math.max(amount * 0.2, amount - defense * 1.2 - toughness * 0.4);
+    let reduced = Math.max(amount * 0.2, amount - defense * 1.2 - toughness * 0.4);
+    // A shield stops blows, not falls, drowning, magma or hunger. Every
+    // environmental source in the game passes ignoreInvuln, and a creature's
+    // attack is the only thing that does not, so that flag is the line.
+    if (!opts?.ignoreInvuln) reduced = this._absorbWithShield(reduced);
+
+    // A killing blow is the totem's cue. Checked before the damage lands, so
+    // the player never sees the death screen flash past first.
+    if (this.health - reduced <= 0 && this._spendTotem()) return;
+
     super.damage(reduced, opts);
     globalEvents.emit('player:healthChanged');
+  }
+
+  /**
+   * A shield in the offhand soaks up part of a blow and wears down doing it.
+   * It sits in the offhand rather than an armor slot on purpose: you give up
+   * carrying torches for it.
+   */
+  _absorbWithShield(amount) {
+    const slot = this.inventory.offhand;
+    const def = slot ? ItemRegistry.get(slot.id) : null;
+    if (!def?.shield) return amount;
+
+    const absorbed = amount * def.shield.block;
+    slot.durability = (slot.durability ?? def.shield.durability) - Math.max(1, Math.round(absorbed));
+    if (slot.durability <= 0) {
+      this.inventory.offhand = null;
+      globalEvents.emit('ui:toast', `Your ${def.displayName} splinters.`);
+    }
+    globalEvents.emit('inventory:changed');
+    return amount - absorbed;
+  }
+
+  /**
+   * Spends one Warding Totem, if there is one, and leaves the player alive
+   * on a sliver of health. The offhand is checked first so a totem carried
+   * deliberately is used before one sitting forgotten in the pack.
+   */
+  _spendTotem() {
+    const offhand = this.inventory.offhand;
+    const offhandDef = offhand ? ItemRegistry.get(offhand.id) : null;
+    let def = null;
+
+    if (offhandDef?.totem) {
+      def = offhandDef;
+      offhand.count -= 1;
+      if (offhand.count <= 0) this.inventory.offhand = null;
+    } else {
+      const index = this.inventory.slots.findIndex((s) => s && ItemRegistry.get(s.id)?.totem);
+      if (index < 0) return false;
+      def = ItemRegistry.get(this.inventory.slots[index].id);
+      this.inventory.removeFromSlot(index, 1);
+    }
+
+    this.health = def.totem.reviveHealth;
+    this.invulnerableTimer = 1.5; // a moment to get clear after being saved
+    globalEvents.emit('inventory:changed');
+    globalEvents.emit('player:healthChanged');
+    globalEvents.emit('player:totemUsed');
+    globalEvents.emit('ui:toast', `Your ${def.displayName} shatters and pulls you back.`);
+    return true;
   }
 
   heal(amount) {

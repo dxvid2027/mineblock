@@ -34,6 +34,7 @@ export const LOOT_TABLES = {
     { id: 'ruddle_sword', min: 1, max: 1, chance: 0.35 },
     { id: 'ferrite_helmet', min: 1, max: 1, chance: 0.2 },
     { id: 'ferrite_ingot', min: 1, max: 3, chance: 0.5 },
+    { id: 'bulwark_shield', min: 1, max: 1, chance: 0.3 },
     { id: 'char_lump', min: 2, max: 6, chance: 0.7 },
     { id: 'cooked_meat', min: 1, max: 3, chance: 0.5 }
   ],
@@ -55,6 +56,7 @@ export const LOOT_TABLES = {
     { id: 'cooked_meat', min: 2, max: 4, chance: 0.7 },
     { id: 'char_lump', min: 3, max: 8, chance: 0.7 },
     { id: 'ferrite_boots', min: 1, max: 1, chance: 0.25 },
+    { id: 'bulwark_shield', min: 1, max: 1, chance: 0.2 },
     { id: 'frostpine_sapling', min: 1, max: 3, chance: 0.5 },
     { id: 'woven_cloth_blue', min: 1, max: 3, chance: 0.4 }
   ],
@@ -77,6 +79,7 @@ export const LOOT_TABLES = {
     { id: 'aurum_ingot', min: 1, max: 3, chance: 0.5 },
     { id: 'rune_shard', min: 1, max: 2, chance: 0.3 },
     { id: 'infusion_dust', min: 1, max: 3, chance: 0.45 },
+    { id: 'warding_totem', min: 1, max: 1, chance: 0.18 },
     { id: 'glow_lantern', min: 1, max: 2, chance: 0.4 }
   ],
   ember_shrine: [
@@ -92,6 +95,7 @@ export const LOOT_TABLES = {
     { id: 'rune_shard', min: 1, max: 3, chance: 0.45 },
     { id: 'voidshard_sword', min: 1, max: 1, chance: 0.15 },
     { id: 'elixir_of_haste', min: 1, max: 2, chance: 0.35 },
+    { id: 'warding_totem', min: 1, max: 1, chance: 0.25 },
     { id: 'warding_amulet', min: 1, max: 1, chance: 0.12 }
   ]
 };

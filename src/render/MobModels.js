@@ -411,6 +411,9 @@ export function buildMobMesh(species) {
 export function disposeMobMesh(group) {
   group.traverse((o) => {
     if (!o.isMesh) return;
+    // Parts flagged as shared (the health bar) belong to every creature at
+    // once; disposing them here would blank the bars on all the others.
+    if (o.parent?.userData?.shared) return;
     o.geometry.dispose();
     // Skins are shared and cached per species, so only the materials go here.
     if (o.material.transparent) o.material.dispose();

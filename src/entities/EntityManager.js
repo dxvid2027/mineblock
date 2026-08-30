@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Mob } from './Mob.js';
 import { disposeMobMesh } from '../render/MobModels.js';
+import { updateHealthBar } from '../render/HealthBar.js';
 import { Entity } from './Entity.js';
 import { CREATURES } from './creatures/CreatureTypes.js';
 import { ItemRegistry } from '../items/ItemRegistry.js';
@@ -18,6 +19,7 @@ const CAVE_SPAWN_MIN_DIST = 9;
 const CAVE_SPAWN_MAX_DIST = 20;
 const CAVE_SPAWN_MIN_DEPTH = 6; // blocks below the local surface
 const CAVE_SPAWN_MAX_LIGHT = 8; // torch-lit areas stay clear
+const HEALTH_BAR_DISTANCE = 20; // beyond this a creature's bar is not drawn
 const DROP_LIFETIME = 300;
 const PICKUP_RADIUS = 1.3;
 const ATTACK_COOLDOWN_BASE = 0.55;
@@ -57,6 +59,7 @@ export class EntityManager {
     this._spawnTimer = 0;
     this._attackCooldown = 0;
     this.bossAlive = false;
+    this.boss = null;
 
     this._offDrop = globalEvents.on('item:drop', ({ id, count, position }) => this.spawnDrop(id, count, position));
   }
@@ -83,13 +86,13 @@ export class EntityManager {
     mob.position.set(position.x, position.y, position.z);
     this.group.add(mob.mesh);
     this.mobs.push(mob);
-    if (species.boss) this.bossAlive = true;
+    if (species.boss) { this.bossAlive = true; this.boss = mob; }
     return mob;
   }
 
   update(dt, player, dayNight, input, interaction) {
     this._updateSpawning(dt, player, dayNight);
-    this._updateMobs(dt, player);
+    this._updateMobs(dt, player, interaction?.camera);
     this._updateDrops(dt, player);
     this._updateCombat(dt, player, input, interaction);
   }
@@ -176,10 +179,11 @@ export class EntityManager {
     return false;
   }
 
-  _updateMobs(dt, player) {
+  _updateMobs(dt, player, camera) {
     for (let i = this.mobs.length - 1; i >= 0; i--) {
       const mob = this.mobs[i];
       mob.update(dt, this.world, player);
+      if (mob.healthBar && camera) updateHealthBar(mob.healthBar, mob, camera, HEALTH_BAR_DISTANCE);
       const dist = mob.distanceTo(player.position);
       if (!mob.alive) {
         this._killMob(mob, i);
@@ -202,7 +206,7 @@ export class EntityManager {
     this.group.remove(mob.mesh);
     disposeMobMesh(mob.mesh);
     this.mobs.splice(index, 1);
-    if (mob.species.boss) this.bossAlive = false;
+    if (mob.species.boss) { this.bossAlive = false; this.boss = null; }
     globalEvents.emit('entity:mobKilled', mob.species);
   }
 

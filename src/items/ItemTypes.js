@@ -162,6 +162,23 @@ ItemRegistry.register({ id: 'elixir_of_haste', displayName: 'Elixir of Haste', c
 ItemRegistry.register({ id: 'warden_core', displayName: 'Warden Core', category: 'magic', description: 'The molten heart of the Cinder Warden. The ultimate Infusion catalyst.', texture: icon('gem', '#ff6a2f') });
 
 // ---------------------------------------------------------------------- //
+// Defensive gear — both are held in the offhand, so they cost you the
+// torch-carrying slot rather than a hotbar slot or an armor piece.
+// ---------------------------------------------------------------------- //
+ItemRegistry.register({
+  id: 'bulwark_shield', displayName: 'Bulwark Shield', category: 'shield', stackSize: 1,
+  description: 'Held in the offhand. Soaks up part of every blow until it splinters.',
+  texture: icon('shield', '#9a7a4f'),
+  shield: { block: 0.45, durability: 260 }
+});
+ItemRegistry.register({
+  id: 'warding_totem', displayName: 'Warding Totem', category: 'magic', stackSize: 1,
+  description: 'Shatters instead of you. Spent automatically on a killing blow, from the offhand or your pack.',
+  texture: icon('totem', '#e8cf4f'),
+  totem: { reviveHealth: 8 }
+});
+
+// ---------------------------------------------------------------------- //
 // Misc / crafted tools
 // ---------------------------------------------------------------------- //
 ItemRegistry.register({ id: 'flint_striker', displayName: 'Flint Striker', category: 'tool', description: 'Strikes a spark. Lights torches and Smelters.', stackSize: 1, texture: icon('striker', '#7a7a7f') });

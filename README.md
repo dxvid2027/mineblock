@@ -89,12 +89,33 @@ Expanse. The intended route, in order:
 item and recipe tables, so a tier gate or recipe change that makes any step
 unreachable fails the test suite rather than stranding a player mid-game.
 
+### Reading a fight
+
+Every creature carries a small health bar over its head, colored green /
+amber / red as it drops, drawn depth-tested so it cannot give away what is
+behind a wall. **The Cinder Warden** gets a wide bar across the top of the
+screen instead, for as long as it lives. Hovering any item shows its real
+numbers — damage including Infusion bonuses, mining speed, defense, block
+percentage, durability — worked out by the same code that swings the weapon,
+so the tooltip cannot drift from the fight.
+
 ### Equipment
 
 Armor comes in five tiers (Ruddle, Ferrite, Aurum, Glimmer, Voidshard), each
 with helmet / chest / legs / boots, plus an amulet slot (Warding or Vigor
 Amulet) and an offhand slot. Tools and weapons cover the same tiers across
 pickaxe, axe, shovel, sword and hoe.
+
+Two pieces of defensive gear go in the **offhand**, so they cost you the
+torch slot rather than an armor slot:
+
+- **Bulwark Shield** (5 Planks + 1 Ferrite Ingot) absorbs 45% of every
+  creature blow and wears down doing it, 260 durability. It does not soften
+  falls, drowning, magma or starvation — only blows.
+- **Warding Totem** (4 Aurum Ingots + 2 Glimmer Shards + 1 Infusion Dust)
+  is spent automatically on a killing blow and leaves you standing on 8
+  health, from the offhand first or otherwise from your pack. It catches any
+  death, a fall included. Both also turn up in structure loot.
 
 ## Running it
 

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Entity } from './Entity.js';
 import { buildMobMesh } from '../render/MobModels.js';
+import { createHealthBar } from '../render/HealthBar.js';
 
 const ATTACK_RANGE = 1.6;
 const ATTACK_COOLDOWN = 1.0;
@@ -24,6 +25,13 @@ export class Mob extends Entity {
     this._animTime = Math.random() * 10; // desync identical species
     this._hurtFlash = 0;
     this.mesh = buildMobMesh(species);
+    // The boss gets the wide bar across the top of the screen instead; a
+    // floating one over its head would only be in the way of the fight.
+    if (!species.boss) {
+      this.healthBar = createHealthBar(species.bodyType === 'biped' ? 1.1 : 1);
+      this.healthBar.position.y = this.height + 0.25;
+      this.mesh.add(this.healthBar);
+    }
     this.id = `${species.id}-${Math.random().toString(36).slice(2, 9)}`;
   }
 

@@ -924,6 +924,47 @@ const ICON_SHAPES = {
     ctx.fillStyle = HANDLE; ctx.fillRect(s * 0.42, s * 0.12, s * 0.16, s * 0.26);
     ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(s * 0.33, s * 0.62, s * 0.05, s * 0.18);
   },
+  /** A kite shield: banded face, a boss in the middle, a rim all round. */
+  shield(ctx, s, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(s * 0.22, s * 0.12); ctx.lineTo(s * 0.78, s * 0.12);
+    ctx.lineTo(s * 0.78, s * 0.58); ctx.quadraticCurveTo(s * 0.5, s * 0.94, s * 0.22, s * 0.58);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shade(color, -32); // reinforcing band
+    ctx.fillRect(s * 0.22, s * 0.34, s * 0.56, s * 0.08);
+    ctx.fillStyle = shade(color, 34);
+    ctx.fillRect(s * 0.22, s * 0.12, s * 0.56, s * 0.06); // lit top rim
+    ctx.fillStyle = '#c9ced9';
+    ctx.beginPath(); ctx.ellipse(s * 0.5, s * 0.46, s * 0.1, s * 0.1, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f2f5fa';
+    ctx.beginPath(); ctx.ellipse(s * 0.47, s * 0.43, s * 0.04, s * 0.04, 0, 0, Math.PI * 2); ctx.fill();
+  },
+
+  /** A carved totem: a stacked face on a post, crowned with a bright stone. */
+  totem(ctx, s, color) {
+    const wood = '#a67a4a';
+    ctx.fillStyle = wood;
+    ctx.fillRect(s * 0.3, s * 0.2, s * 0.4, s * 0.72);
+    ctx.fillStyle = shade(wood, -28);
+    ctx.fillRect(s * 0.3, s * 0.2, s * 0.07, s * 0.72); // shaded side of the post
+    // Carved face.
+    ctx.fillStyle = shade(wood, -45);
+    ctx.fillRect(s * 0.38, s * 0.42, s * 0.08, s * 0.08);
+    ctx.fillRect(s * 0.56, s * 0.42, s * 0.08, s * 0.08);
+    ctx.fillRect(s * 0.4, s * 0.62, s * 0.22, s * 0.06);
+    // Outstretched arms and the stone set into the crown.
+    ctx.fillStyle = wood;
+    ctx.fillRect(s * 0.14, s * 0.52, s * 0.16, s * 0.09);
+    ctx.fillRect(s * 0.7, s * 0.52, s * 0.16, s * 0.09);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(s * 0.5, s * 0.04); ctx.lineTo(s * 0.66, s * 0.2);
+    ctx.lineTo(s * 0.34, s * 0.2); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = shade(color, 45);
+    ctx.fillRect(s * 0.45, s * 0.12, s * 0.06, s * 0.06);
+  },
+
   striker(ctx, s, color) {
     ctx.fillStyle = color;
     ctx.fillRect(s * 0.24, s * 0.28, s * 0.44, s * 0.16);

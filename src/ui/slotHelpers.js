@@ -1,6 +1,6 @@
-import { ItemRegistry } from '../items/ItemRegistry.js';
+import { ItemRegistry, itemDurability } from '../items/ItemRegistry.js';
 import { getItemIconCanvas } from '../render/ItemIcons.js';
-import { infusionDescriptions } from '../magic/InfusionSystem.js';
+import { infusionDescriptions, getInfusionLevel } from '../magic/InfusionSystem.js';
 
 let tooltipEl = null;
 function tooltip() {
@@ -42,6 +42,45 @@ export function renderSlotContent(el, stack) {
   }
 }
 
+/**
+ * The numbers behind an item, worked out the same way the game does when it
+ * actually swings, blocks or eats it — so what the tooltip promises is what
+ * the fight delivers, Infusions included.
+ */
+export function itemStatLines(stack, def) {
+  const lines = [];
+
+  if (def.tool) {
+    const keen = getInfusionLevel(stack, 'keenedge');
+    const damage = def.tool.damage + keen;
+    // Every hit lands for this, bare hands included, so weapons and tools
+    // both get the line: a shovel that hits for 1 should say so.
+    lines.push({ label: 'Damage', value: keen > 0 ? `${damage} (${def.tool.damage} +${keen})` : `${damage}` });
+    if (def.tool.type !== 'sword') {
+      const swift = getInfusionLevel(stack, 'swiftmine');
+      const speed = def.tool.miningSpeed * (1 + swift * 0.25);
+      lines.push({ label: 'Mining speed', value: `${speed.toFixed(1)}x` });
+    }
+  }
+
+  if (def.armor) {
+    lines.push({ label: 'Defense', value: `${def.armor.defense + getInfusionLevel(stack, 'vitality_ward')}` });
+    if (def.armor.toughness) lines.push({ label: 'Toughness', value: `${def.armor.toughness}` });
+  }
+
+  if (def.shield) lines.push({ label: 'Blocks', value: `${Math.round(def.shield.block * 100)}% of every blow` });
+  if (def.totem) lines.push({ label: 'On a killing blow', value: `revives you at ${def.totem.reviveHealth} health` });
+  if (def.food?.hunger) lines.push({ label: 'Restores', value: `${def.food.hunger} hunger` });
+  if (def.food?.heal) lines.push({ label: 'Heals', value: `${def.food.heal} health` });
+  if (def.fuel > 0) lines.push({ label: 'Burns for', value: `${(def.fuel / 20).toFixed(0)}s in a Smelter` });
+
+  const max = itemDurability(def);
+  if (max !== undefined && max !== Infinity) {
+    lines.push({ label: 'Durability', value: `${Math.round(stack.durability ?? max)} / ${max}` });
+  }
+  return lines;
+}
+
 export function attachTooltip(el, getStack) {
   el.addEventListener('mouseenter', () => {
     const stack = getStack();
@@ -50,6 +89,14 @@ export function attachTooltip(el, getStack) {
     if (!def) return;
     const t = tooltip();
     let html = `<div class="name">${def.displayName}</div><div class="desc">${def.description}</div>`;
+    const stats = itemStatLines(stack, def);
+    if (stats.length) {
+      html += '<div class="stats">';
+      for (const { label, value } of stats) {
+        html += `<div class="stat"><span>${label}</span><b>${value}</b></div>`;
+      }
+      html += '</div>';
+    }
     for (const line of infusionDescriptions(stack)) html += `<div class="desc" style="color:#a35bff">${line}</div>`;
     t.innerHTML = html;
     t.style.display = 'block';

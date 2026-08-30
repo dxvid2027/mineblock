@@ -61,7 +61,17 @@ export const RECIPES = [
   shapeless('vigor_amulet', [{ id: 'aurum_ingot', count: 2 }, { id: 'rune_shard', count: 1 }, { id: 'glint_ingot', count: 2 }], { id: 'vigor_amulet', count: 1 }),
   shapeless('elixir_of_mending', [{ id: 'wild_berries', count: 2 }, { id: 'infusion_dust', count: 1 }], { id: 'elixir_of_mending', count: 1 }),
   shapeless('elixir_of_haste', [{ id: 'roasted_tuber', count: 2 }, { id: 'infusion_dust', count: 1 }], { id: 'elixir_of_haste', count: 1 }),
-  shapeless('flint_striker', [{ id: 'ferrite_ingot', count: 1 }, { id: 'stick', count: 1 }], { id: 'flint_striker', count: 1 })
+  shapeless('flint_striker', [{ id: 'ferrite_ingot', count: 1 }, { id: 'stick', count: 1 }], { id: 'flint_striker', count: 1 }),
+
+  // --- Defensive gear ---
+  // Deliberately mid-game: the shield wants a metal a player already has by
+  // the time anything hits hard, and the totem sits one tier below the
+  // Riftstone so it can actually be taken into the boss fight.
+  shaped('bulwark_shield', ['PMP', 'PPP', ' P '],
+    { P, M: { id: 'ferrite_ingot' } }, { id: 'bulwark_shield', count: 1 }),
+  shapeless('warding_totem',
+    [{ id: 'aurum_ingot', count: 4 }, { id: 'glimmer_shard', count: 2 }, { id: 'infusion_dust', count: 1 }],
+    { id: 'warding_totem', count: 1 })
 ];
 
 // Programmatically add tool + weapon recipes for every material tier.

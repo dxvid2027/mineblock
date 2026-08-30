@@ -477,6 +477,60 @@ button {
 ::-webkit-scrollbar-thumb { background: var(--mb-border); border-radius: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
+/* ---------- Boss bar ----------
+   Sits across the top of the screen for as long as a boss is alive. Wide and
+   central because it is the one number that matters during the fight. */
+.boss-bar {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, 70vw);
+  text-align: center;
+  pointer-events: none;
+}
+.boss-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--mb-text);
+  text-shadow: 0 0 6px #fff, 0 1px 0 #fff;
+  margin-bottom: 5px;
+}
+.boss-track {
+  height: 13px;
+  border-radius: 7px;
+  background: var(--mb-hud-bg);
+  border: 1px solid var(--mb-border);
+  box-shadow: 0 2px 10px rgba(28, 38, 66, 0.18);
+  overflow: hidden;
+}
+.boss-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(180deg, #e0703a, #b8391f);
+  transition: width 0.2s linear;
+}
+.boss-fill.low { background: linear-gradient(180deg, #d1544a, #8f2a22); }
+
+/* ---------- Item tooltip stats ---------- */
+.inv-tooltip .stats {
+  margin-top: 7px;
+  padding-top: 6px;
+  border-top: 1px solid var(--mb-border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.inv-tooltip .stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  font-size: 12px;
+  color: var(--mb-text-dim);
+}
+.inv-tooltip .stat b { color: var(--mb-text); font-weight: 700; }
+
 /* ---------- Pointer / gesture behaviour ----------
    The game owns every gesture on the play surface: without this, Safari
    turns drags into scrolls and double-taps into zooms, which fights the

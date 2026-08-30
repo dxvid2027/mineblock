@@ -1,4 +1,4 @@
-import { ItemRegistry } from '../items/ItemRegistry.js';
+import { ItemRegistry, itemDurability } from '../items/ItemRegistry.js';
 import { EQUIP_SLOTS, HOTBAR_SIZE, insertIntoSlots } from '../items/Inventory.js';
 import { matchRecipe, consumeGridForCraft } from '../items/CraftingSystem.js';
 import { RECIPES } from '../items/CraftingRecipes.js';
@@ -335,7 +335,7 @@ export class InventoryScreen {
     consumeGridForCraft(this.inv.craftingGrid, match.recipe);
     const gained = match.recipe.result.count;
     if (this.cursor) this.cursor.count += gained;
-    else this.cursor = { id: match.recipe.result.id, count: gained, durability: def.tool || def.armor ? (def.tool?.durability ?? def.armor?.durability) : undefined };
+    else this.cursor = { id: match.recipe.result.id, count: gained, durability: itemDurability(def) };
     this._afterChange();
   }
 
@@ -353,7 +353,7 @@ export class InventoryScreen {
       if (!this._hasRoomFor(id, count)) break;
       const def = ItemRegistry.get(id);
       consumeGridForCraft(this.inv.craftingGrid, match.recipe);
-      this.inv.addItem(id, count, def.tool?.durability ?? def.armor?.durability);
+      this.inv.addItem(id, count, itemDurability(def));
     }
     this._afterChange();
   }

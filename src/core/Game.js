@@ -11,7 +11,7 @@ import { PlayerController } from '../player/PlayerController.js';
 import { Interaction } from '../player/Interaction.js';
 import { SurvivalSystem } from '../player/SurvivalSystem.js';
 import { EntityManager } from '../entities/EntityManager.js';
-import { ItemRegistry } from '../items/ItemRegistry.js';
+import { ItemRegistry, itemDurability } from '../items/ItemRegistry.js';
 import { BlockRegistry } from '../blocks/BlockRegistry.js';
 import { rollLoot } from '../world/Structures.js';
 import { getInfusionLevel } from '../magic/InfusionSystem.js';
@@ -230,7 +230,7 @@ export class Game {
     this.renderer.setClearColor(this.dayNight.sky.bottom);
 
     this._updateEmberlight();
-    this.hud.update(this.world, this.dayNight, this.interaction);
+    this.hud.update(this.world, this.dayNight, this.interaction, this.entities.boss);
     this.debugRenderer.update(this.world, this.entities, this.player);
     this.debugOverlay.trackFrame(dt);
     this.debugOverlay.update({ world: this.world, player: this.player, dayNight: this.dayNight, interaction: this.interaction, entities: this.entities, weather: this.weather });
@@ -343,7 +343,7 @@ export class Game {
         id: stack.id,
         count: Math.min(stack.count, def.stackSize),
         // Tools and armor need durability or they read as broken.
-        durability: def.tool?.durability ?? def.armor?.durability
+        durability: itemDurability(def)
       };
     }
   }
