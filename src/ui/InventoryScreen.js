@@ -1,8 +1,8 @@
 import { ItemRegistry } from '../items/ItemRegistry.js';
-import { EQUIP_SLOTS } from '../items/Inventory.js';
+import { EQUIP_SLOTS, HOTBAR_SIZE, insertIntoSlots } from '../items/Inventory.js';
 import { matchRecipe, consumeGridForCraft } from '../items/CraftingSystem.js';
 import { RECIPES } from '../items/CraftingRecipes.js';
-import { renderSlotContent, attachTooltip, hideTooltip, makeSlotEl } from './slotHelpers.js';
+import { renderSlotContent, attachTooltip, hideTooltip, makeSlotEl, bindSlotClicks } from './slotHelpers.js';
 import { getItemIconCanvas } from '../render/ItemIcons.js';
 import { globalEvents } from '../core/EventBus.js';
 
@@ -33,7 +33,9 @@ export class InventoryScreen {
     this.el.className = 'mb-modal-backdrop interactive';
     const panel = document.createElement('div');
     panel.className = 'mb-panel';
-    panel.style.maxWidth = '760px';
+    // Wide enough for the 9-slot grid and the recipe column side by side
+    // (516 + 220 + gaps); narrower windows wrap the recipe list underneath.
+    panel.style.maxWidth = 'min(900px, 100%)';
     panel.style.position = 'relative';
     panel.innerHTML = `<div class="mb-modal-title">${this.title}</div>`;
     const close = document.createElement('button');
@@ -94,8 +96,7 @@ export class InventoryScreen {
     this._mainEls = [];
     for (let i = 0; i < this.inv.slots.length; i++) {
       const el = makeSlotEl();
-      el.addEventListener('click', () => this._clickMain(i));
-      el.addEventListener('contextmenu', (e) => { e.preventDefault(); this._clickMain(i, true); });
+      bindSlotClicks(el, (mods) => this._clickMain(i, mods));
       attachTooltip(el, () => this.inv.slots[i]);
       grid.appendChild(el);
       this._mainEls.push(el);
@@ -111,7 +112,7 @@ export class InventoryScreen {
       const el = makeSlotEl();
       el.title = slot;
       el.innerHTML = `<span style="opacity:.35;font-size:20px;position:absolute;">${EQUIP_ICONS[slot]}</span>`;
-      el.addEventListener('click', () => this._clickEquipment(slot));
+      bindSlotClicks(el, (mods) => this._clickEquipment(slot, mods));
       attachTooltip(el, () => this.inv.equipment[slot]);
       row.appendChild(el);
       this._equipEls[slot] = el;
@@ -126,7 +127,7 @@ export class InventoryScreen {
     this._offhandEl = makeSlotEl();
     this._offhandEl.title = 'offhand';
     this._offhandEl.innerHTML = '<span style="opacity:.35;font-size:20px;position:absolute;">✋</span>';
-    this._offhandEl.addEventListener('click', () => this._clickOffhand());
+    bindSlotClicks(this._offhandEl, (mods) => this._clickOffhand(mods));
     attachTooltip(this._offhandEl, () => this.inv.offhand);
     row.appendChild(this._offhandEl);
 
@@ -146,7 +147,7 @@ export class InventoryScreen {
       const inCraftArea = (i % 3) < this.craftSize && Math.floor(i / 3) < this.craftSize;
       if (!inCraftArea) el.style.visibility = 'hidden';
       else {
-        el.addEventListener('click', () => this._clickCraftGrid(i));
+        bindSlotClicks(el, (mods) => this._clickCraftGrid(i, mods));
         attachTooltip(el, () => this.inv.craftingGrid[i]);
       }
       grid.appendChild(el);
@@ -160,7 +161,7 @@ export class InventoryScreen {
     const outWrap = document.createElement('div');
     outWrap.className = 'craft-output';
     this._outputEl = makeSlotEl();
-    this._outputEl.addEventListener('click', () => this._clickCraftOutput());
+    bindSlotClicks(this._outputEl, (mods) => this._clickCraftOutput(mods));
     outWrap.appendChild(this._outputEl);
 
     wrap.append(grid, arrow, outWrap);
@@ -199,7 +200,7 @@ export class InventoryScreen {
     this._externalEls = [];
     for (let i = 0; i < this.external.slots.length; i++) {
       const el = makeSlotEl();
-      el.addEventListener('click', () => this._clickExternal(i));
+      bindSlotClicks(el, (mods) => this._clickExternal(i, mods));
       attachTooltip(el, () => this.external.slots[i]);
       grid.appendChild(el);
       this._externalEls.push(el);
@@ -208,19 +209,23 @@ export class InventoryScreen {
   }
 
   // ------------------------------------------------------------- clicking
-  _clickMain(i, half = false) {
+  _clickMain(i, { half = false, shift = false } = {}) {
+    if (shift) { this._quickMoveFromMain(i); return; }
     this._genericClick(() => this.inv.slots[i], (v) => { this.inv.slots[i] = v; }, half);
   }
 
-  _clickExternal(i) {
-    this._genericClick(() => this.external.slots[i], (v) => { this.external.slots[i] = v; this.external.onChange?.(); });
+  _clickExternal(i, { half = false, shift = false } = {}) {
+    if (shift) { this._quickMoveToPlayer(() => this.external.slots[i], (v) => { this.external.slots[i] = v; this.external.onChange?.(); }); return; }
+    this._genericClick(() => this.external.slots[i], (v) => { this.external.slots[i] = v; this.external.onChange?.(); }, half);
   }
 
-  _clickCraftGrid(i) {
-    this._genericClick(() => this.inv.craftingGrid[i], (v) => { this.inv.craftingGrid[i] = v; });
+  _clickCraftGrid(i, { half = false, shift = false } = {}) {
+    if (shift) { this._quickMoveToPlayer(() => this.inv.craftingGrid[i], (v) => { this.inv.craftingGrid[i] = v; }); return; }
+    this._genericClick(() => this.inv.craftingGrid[i], (v) => { this.inv.craftingGrid[i] = v; }, half);
   }
 
-  _clickEquipment(slot) {
+  _clickEquipment(slot, { shift = false } = {}) {
+    if (shift) { this._quickMoveToPlayer(() => this.inv.equipment[slot], (v) => { this.inv.equipment[slot] = v; }); return; }
     const current = this.inv.equipment[slot];
     if (!this.cursor && current) {
       this.cursor = current;
@@ -240,9 +245,46 @@ export class InventoryScreen {
     this.refresh();
   }
 
-  _clickOffhand() {
+  _clickOffhand({ half = false, shift = false } = {}) {
     // Unlike the armor slots, the offhand accepts any item.
-    this._genericClick(() => this.inv.offhand, (v) => { this.inv.offhand = v; });
+    if (shift) { this._quickMoveToPlayer(() => this.inv.offhand, (v) => { this.inv.offhand = v; }); return; }
+    this._genericClick(() => this.inv.offhand, (v) => { this.inv.offhand = v; }, half);
+  }
+
+  // --------------------------------------------------------- quick moving
+  /**
+   * Shift + left click on a slot outside the player's grid (a crate, the
+   * crafting grid, a worn item): send it straight to the inventory without
+   * having to pick it up and drop it.
+   */
+  _quickMoveToPlayer(get, set) {
+    const stack = get();
+    if (!stack) return;
+    const leftover = insertIntoSlots(this.inv.slots, stack);
+    set(leftover);
+    this._afterChange();
+  }
+
+  /**
+   * Shift + left click inside the player's own grid. With a container open
+   * the stack goes there; otherwise it jumps between the hotbar and the
+   * storage rows, which is how the same gesture behaves in the genre.
+   */
+  _quickMoveFromMain(i) {
+    const stack = this.inv.slots[i];
+    if (!stack) return;
+    this.inv.slots[i] = null;
+    let leftover;
+    if (this.external) {
+      leftover = insertIntoSlots(this.external.slots, stack);
+      this.external.onChange?.();
+    } else if (i < HOTBAR_SIZE) {
+      leftover = insertIntoSlots(this.inv.slots, stack, HOTBAR_SIZE, this.inv.slots.length);
+    } else {
+      leftover = insertIntoSlots(this.inv.slots, stack, 0, HOTBAR_SIZE);
+    }
+    this.inv.slots[i] = leftover; // whatever did not fit stays where it was
+    this._afterChange();
   }
 
   _genericClick(get, set, half = false) {
@@ -268,9 +310,11 @@ export class InventoryScreen {
         this.cursor = null;
       }
     } else if (slot.id === this.cursor.id && slot.durability === undefined) {
+      // Right click tops the slot up one item at a time, so a held stack can
+      // be dealt out evenly across the crafting grid.
       const def = ItemRegistry.get(slot.id);
       const room = (def?.stackSize ?? 64) - slot.count;
-      const move = Math.min(room, this.cursor.count);
+      const move = Math.min(room, this.cursor.count, half ? 1 : Infinity);
       set({ ...slot, count: slot.count + move });
       this.cursor.count -= move;
       if (this.cursor.count <= 0) this.cursor = null;
@@ -281,7 +325,8 @@ export class InventoryScreen {
     this._afterChange();
   }
 
-  _clickCraftOutput() {
+  _clickCraftOutput({ shift = false } = {}) {
+    if (shift) { this._craftAll(); return; }
     const match = matchRecipe(this.inv.craftingGrid);
     if (!match) return;
     const def = ItemRegistry.get(match.recipe.result.id);
@@ -292,6 +337,37 @@ export class InventoryScreen {
     if (this.cursor) this.cursor.count += gained;
     else this.cursor = { id: match.recipe.result.id, count: gained, durability: def.tool || def.armor ? (def.tool?.durability ?? def.armor?.durability) : undefined };
     this._afterChange();
+  }
+
+  /**
+   * Shift + click on the result: craft repeatedly, straight into the
+   * inventory, until the ingredients run out or there is no room left. The
+   * room check happens before each craft so ingredients are never consumed
+   * for an item that would then be dropped on the floor.
+   */
+  _craftAll() {
+    for (let guard = 0; guard < 512; guard++) {
+      const match = matchRecipe(this.inv.craftingGrid);
+      if (!match) break;
+      const { id, count } = match.recipe.result;
+      if (!this._hasRoomFor(id, count)) break;
+      const def = ItemRegistry.get(id);
+      consumeGridForCraft(this.inv.craftingGrid, match.recipe);
+      this.inv.addItem(id, count, def.tool?.durability ?? def.armor?.durability);
+    }
+    this._afterChange();
+  }
+
+  /** Whether `count` of `id` still fits in the player's main slots. */
+  _hasRoomFor(id, count) {
+    const stackSize = ItemRegistry.get(id)?.stackSize ?? 64;
+    let room = 0;
+    for (const slot of this.inv.slots) {
+      if (!slot) room += stackSize;
+      else if (slot.id === id && slot.durability == null) room += stackSize - slot.count;
+      if (room >= count) return true;
+    }
+    return false;
   }
 
   _tryQuickFill(recipe) {
@@ -355,6 +431,7 @@ export class InventoryScreen {
     window.removeEventListener('mousemove', this._onMouseMove);
     hideTooltip();
     this.el.remove();
+    this._cursorEl.remove(); // lives outside the panel, so it needs removing too
     globalEvents.emit('inventory:changed');
   }
 }

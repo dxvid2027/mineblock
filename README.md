@@ -2,8 +2,9 @@
 
 MineBlock is a complete, original single-player voxel sandbox survival game.
 It runs as a desktop app (Windows, macOS, Linux) via
-[Electron](https://www.electronjs.org/), and as a website playable by touch on
-an iPad — the same build, deployed to Cloudflare. It is rendered with
+[Electron](https://www.electronjs.org/), and as a website playable with a
+mouse and keyboard on a computer or an iPad — the same build, deployed to
+Cloudflare. It is rendered with
 [three.js](https://threejs.org/). Every block, item, creature, dimension,
 texture and system in this project is original content — no assets, names, or
 code were copied from any existing game.
@@ -101,22 +102,24 @@ npm run build:desktop  # electron-builder output lands in release/
 `npm start` builds once and launches Electron against the static build, for a
 quick production-mode check without packaging an installer.
 
-## Playing on an iPad (or any tablet/phone)
+## Playing on an iPad
 
-The web build is fully playable by touch. iOS Safari implements no Pointer
-Lock API, so touch devices get their own control scheme rather than the
-desktop one:
+Play the web build on an iPad the same way as on a desktop: with a mouse (or
+trackpad) and a keyboard. There are no on-screen controls — the controls table
+below is the whole scheme.
 
-- **Left stick** — analog movement; push it all the way to sprint.
-- **Drag anywhere else** — look around.
-- **⛏ / ▣** — break (hold) and place.
-- **⤒ / ⤓** — jump and crouch.
-- **🎒 / ☰** — inventory and pause.
-- Tap a hotbar slot to select it.
+The one thing an iPad cannot do is Pointer Lock: Safari has no such API, so the
+cursor can never be captured and hidden the way it is on desktop. MineBlock
+therefore never depends on holding a lock. Whenever gameplay owns the camera
+but no lock is held — on iPadOS always, and on desktop whenever a lock request
+is refused — the view follows the cursor's own motion instead, and keeps
+turning while the cursor rests against a screen edge, where it can move no
+further. Everything else (WASD, clicks to break and place, the hotbar keys) is
+identical, because it never needed the lock in the first place.
 
-Touch hardware also gets a shorter default render distance and a capped pixel
-ratio, since an iPad reports a 2× display and rendering the whole voxel scene
-at 2× roughly halves the frame rate.
+Tablets also get a shorter default render distance and a pixel ratio capped at
+1.5×, since an iPad reports a 2× display and rendering the whole voxel scene at
+2× roughly halves the frame rate.
 
 **Add it to the Home Screen** (Share → Add to Home Screen) to get the app
 icon, a fullscreen window with no browser chrome, and offline play: a service
@@ -233,6 +236,21 @@ it.
 | Mob hitboxes | `L` |
 | Debug info (coordinates, biome, light) | `O` |
 
+Inside any inventory, chest, workbench or smelter screen:
+
+| Action | Click |
+| --- | --- |
+| Pick up / drop a whole stack | Left click |
+| Take half a stack, or place one item at a time | Right click |
+| Move a stack to the other container without holding it | `Shift` + Left click |
+| Craft as many as fit, straight into the inventory | `Shift` + Left click on the result |
+
+`Shift` + left click sends an item wherever it obviously belongs: out of a
+chest into your inventory (and back), out of the crafting grid, off an
+equipment slot, and — with no container open — between the hotbar and the
+storage rows. In the Smelter it routes fuel to the fuel slot and everything
+else to the input slot.
+
 All keybinds, render distance, FOV, mouse sensitivity and audio levels are
 configurable from Settings (available from both the main menu and the
 in-game pause menu).
@@ -253,8 +271,7 @@ src/
   magic/            The Infusion (enchantment-like) system
   render/           Procedural texture atlas, item icons, mob models, sky
   ui/               Main menu, HUD, inventory/crafting/smelter/runeforge
-                     screens, settings, pause/death/victory/loading screens,
-                     on-screen touch controls
+                     screens, settings, pause/death/victory/loading screens
   public/           Static web assets: icons, PWA manifest, service worker,
                      Cloudflare asset headers
 tools/              Icon generation and the service-worker build stamp

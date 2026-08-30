@@ -30,7 +30,6 @@ import { PauseMenu } from '../ui/PauseMenu.js';
 import { DeathScreen } from '../ui/DeathScreen.js';
 import { VictoryScreen } from '../ui/VictoryScreen.js';
 import { LoadingScreen } from '../ui/LoadingScreen.js';
-import { TouchControls, isTouchDevice } from '../ui/TouchControls.js';
 
 registerBlockItems();
 
@@ -49,11 +48,11 @@ export class Game {
     this.input = input;
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    this.isTouch = isTouchDevice();
-    this.input.isTouch = this.isTouch;
-    // iPads report devicePixelRatio 2; rendering the whole voxel scene at 2x
-    // on a large panel roughly halves the frame rate for little visible gain.
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, this.isTouch ? 1.5 : 2));
+    // Tablets report devicePixelRatio 2; rendering the whole voxel scene at
+    // 2x on a large panel roughly halves the frame rate for little visible
+    // gain, so cap it there.
+    const highDensityTablet = window.matchMedia?.('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, highDensityTablet ? 1.5 : 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     this.scene = new THREE.Scene();
@@ -136,7 +135,6 @@ export class Game {
     }
 
     this.hud = new HUD(this.uiRoot, this.player);
-    if (this.isTouch) this.touchControls = new TouchControls(this.uiRoot, this.input, this.canvas);
     this.debugRenderer = new DebugRenderer(this.scene);
     this.debugOverlay = new DebugOverlay(this.uiRoot);
     this.loading.destroy();
@@ -200,6 +198,9 @@ export class Game {
 
     const uiOpen = !!this.activeWorkstation;
     if (!uiOpen) {
+      // Only matters where Pointer Lock is unavailable (Safari on iPadOS):
+      // keeps the view turning while the cursor rests against a screen edge.
+      this.input.updateFallbackLook(dt);
       this.controller.update(dt, this.world);
       this.interaction.update(dt);
       this.entities.update(dt, this.player, this.dayNight, this.input, this.interaction);
@@ -277,13 +278,11 @@ export class Game {
     if (this.activeWorkstation) this._closeWorkstation();
     const ui = new InventoryScreen(this.uiRoot, this.player, { craftSize: 2, title: 'Inventory' });
     this.activeWorkstation = { type: 'inventory', ui };
-    this.touchControls?.setVisible(false);
     this.input.releasePointerLock();
   }
 
   _openWorkstation({ type, pos }) {
     if (this.activeWorkstation) this._closeWorkstation();
-    this.touchControls?.setVisible(false);
     this.input.releasePointerLock();
 
     if (type === 'crafting') {
@@ -321,7 +320,6 @@ export class Game {
     if (!this.activeWorkstation) return;
     this.activeWorkstation.ui.destroy();
     this.activeWorkstation = null;
-    this.touchControls?.setVisible(true);
     if (this.state === 'playing') this.input.requestPointerLock();
   }
 
@@ -374,7 +372,6 @@ export class Game {
   _togglePause() {
     if (this.state === 'playing') {
       this.state = 'paused';
-      this.touchControls?.setVisible(false);
       this.input.releasePointerLock();
       this.pauseMenu = new PauseMenu(this.uiRoot, {
         onResume: () => this._togglePause(),
@@ -384,7 +381,6 @@ export class Game {
       this.state = 'playing';
       this.pauseMenu.destroy();
       this.pauseMenu = null;
-      this.touchControls?.setVisible(true);
       this.input.requestPointerLock();
     }
   }
@@ -393,7 +389,6 @@ export class Game {
     if (this.state !== 'playing' || this.bossDefeated) return;
     this.bossDefeated = true;
     this.state = 'victory';
-    this.touchControls?.setVisible(false);
     this.input.releasePointerLock();
     this.victoryScreen = new VictoryScreen(this.uiRoot, {
       stats: { days: this.dayNight.day, level: this.player.level },
@@ -401,7 +396,6 @@ export class Game {
         this.victoryScreen.destroy();
         this.victoryScreen = null;
         this.state = 'playing';
-        this.touchControls?.setVisible(true);
         this.input.requestPointerLock();
       }
     });
@@ -411,7 +405,6 @@ export class Game {
   _onPlayerDied() {
     if (this.state !== 'playing') return;
     this.state = 'dead';
-    this.touchControls?.setVisible(false);
     this.input.releasePointerLock();
     this.deathScreen = new DeathScreen(this.uiRoot, {
       onRespawn: () => {
@@ -419,7 +412,6 @@ export class Game {
         this.deathScreen.destroy();
         this.deathScreen = null;
         this.state = 'playing';
-        this.touchControls?.setVisible(true);
         this.input.requestPointerLock();
       }
     });
@@ -449,6 +441,5 @@ export class Game {
     this.world?.dispose();
     this.debugRenderer?.dispose();
     this.debugOverlay?.dispose();
-    this.touchControls?.dispose();
   }
 }

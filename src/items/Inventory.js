@@ -157,4 +157,36 @@ export class Inventory {
   }
 }
 
-export { EQUIP_SLOTS, HOTBAR_SIZE };
+/**
+ * Moves a stack into any flat array of slots (a chest, a range of the
+ * player's own inventory), stacking onto matching slots before filling empty
+ * ones. Mutates `slots`; returns whatever did not fit, or null if it all did.
+ * Items carrying durability never stack, so each one takes its own slot.
+ */
+export function insertIntoSlots(slots, stack, from = 0, to = slots.length) {
+  const stackSize = ItemRegistry.get(stack.id)?.stackSize ?? 64;
+  // Worn equipment is stored without a count; treat it as a single item.
+  let remaining = stack.count ?? 1;
+  const stackable = stack.durability == null;
+
+  if (stackable) {
+    for (let i = from; i < to && remaining > 0; i++) {
+      const slot = slots[i];
+      if (slot && slot.id === stack.id && slot.durability == null && slot.count < stackSize) {
+        const add = Math.min(stackSize - slot.count, remaining);
+        slot.count += add;
+        remaining -= add;
+      }
+    }
+  }
+  for (let i = from; i < to && remaining > 0; i++) {
+    if (!slots[i]) {
+      const add = stackable ? Math.min(stackSize, remaining) : 1;
+      slots[i] = { ...stack, count: add };
+      remaining -= add;
+    }
+  }
+  return remaining > 0 ? { ...stack, count: remaining } : null;
+}
+
+export { EQUIP_SLOTS, HOTBAR_SIZE, MAIN_SLOTS };

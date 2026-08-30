@@ -169,6 +169,16 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 14px;
+  overflow: auto;
+}
+/* A panel taller than the window has to scroll inside itself. Centring it
+   with flexbox alone pushes its top edge above the scrollable area, which is
+   what used to cut off the top of the crafting screen on short windows. */
+.mb-modal-backdrop > .mb-panel {
+  max-height: 100%;
+  max-width: 100%;
+  overflow-y: auto;
 }
 .mb-modal-title {
   font-size: 20px;
@@ -420,7 +430,8 @@ button {
 .craft-output .inv-slot canvas { width: 42px; height: 42px; }
 
 .recipe-list {
-  max-height: 340px;
+  /* Shrinks on short windows so the whole panel still fits without scrolling. */
+  max-height: min(340px, 34vh);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -466,104 +477,12 @@ button {
 ::-webkit-scrollbar-thumb { background: var(--mb-border); border-radius: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
-/* ---------- Touch controls (iPad / phones) ----------
-   iOS Safari has no Pointer Lock, so touch devices get on-screen controls
-   instead. `touch-action: none` everywhere stops Safari from turning drags
-   into scrolls and double-taps into zooms, which would otherwise fight the
-   camera. Positions use safe-area insets so nothing lands under the home
-   indicator or a rounded corner. */
+/* ---------- Pointer / gesture behaviour ----------
+   The game owns every gesture on the play surface: without this, Safari
+   turns drags into scrolls and double-taps into zooms, which fights the
+   camera when playing with a trackpad or a mouse on a tablet. */
 html, body, #app, #game-canvas {
   touch-action: none;
   -webkit-touch-callout: none;
   overscroll-behavior: none;
-}
-
-#touch-controls {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 6;
-}
-
-.touch-stick {
-  position: absolute;
-  left: calc(24px + env(safe-area-inset-left, 0px));
-  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
-  width: 132px;
-  height: 132px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.34);
-  border: 2px solid rgba(28, 38, 66, 0.22);
-  box-shadow: 0 4px 14px rgba(28, 38, 66, 0.18);
-  pointer-events: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  touch-action: none;
-}
-.touch-stick-knob {
-  width: 58px;
-  height: 58px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  border: 2px solid var(--mb-border);
-  box-shadow: 0 2px 8px rgba(28, 38, 66, 0.25);
-  transition: transform 0.05s linear;
-}
-
-.touch-actions {
-  position: absolute;
-  right: calc(24px + env(safe-area-inset-right, 0px));
-  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
-  display: grid;
-  grid-template-columns: repeat(2, 76px);
-  gap: 12px;
-  pointer-events: none;
-}
-
-.touch-menu {
-  position: absolute;
-  right: calc(16px + env(safe-area-inset-right, 0px));
-  top: calc(52px + env(safe-area-inset-top, 0px));
-  display: flex;
-  gap: 8px;
-  pointer-events: none;
-}
-
-.touch-btn {
-  width: 76px;
-  height: 76px;
-  border-radius: 50%;
-  border: 2px solid rgba(28, 38, 66, 0.22);
-  background: rgba(255, 255, 255, 0.82);
-  color: var(--mb-text);
-  font-size: 30px;
-  line-height: 1;
-  pointer-events: auto;
-  touch-action: none;
-  box-shadow: 0 4px 14px rgba(28, 38, 66, 0.18);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.touch-btn.held {
-  background: var(--mb-accent);
-  border-color: var(--mb-accent-dark);
-  transform: scale(0.94);
-}
-.touch-btn.small {
-  width: 52px;
-  height: 52px;
-  font-size: 22px;
-}
-
-/* On a touch device the hotbar is the primary way to pick an item, so make
-   the slots comfortably tappable and keep them clear of the stick. */
-@media (pointer: coarse) {
-  .hud-dock { bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
-  .hotbar-slot { width: 58px; height: 58px; }
-  .hotbar-slot img, .hotbar-slot canvas { width: 40px; height: 40px; }
-  .inv-slot { width: 56px; height: 56px; }
-  .inv-grid { grid-template-columns: repeat(9, 56px); }
-  .mb-btn { padding: 14px 28px; }
 }

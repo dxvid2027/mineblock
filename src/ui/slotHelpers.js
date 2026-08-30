@@ -72,3 +72,19 @@ export function makeSlotEl(className = 'inv-slot') {
   el.className = className;
   return el;
 }
+
+/**
+ * Wires the three ways a slot can be clicked, so every screen behaves the
+ * same: left click takes/places a whole stack, right click takes half or
+ * places a single item, and shift + left click moves the stack straight to
+ * the other container without picking it up.
+ *
+ * `handler` receives { half, shift }.
+ */
+export function bindSlotClicks(el, handler) {
+  el.addEventListener('click', (e) => handler({ half: false, shift: e.shiftKey }));
+  el.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    handler({ half: true, shift: e.shiftKey });
+  });
+}

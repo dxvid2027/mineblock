@@ -1,6 +1,7 @@
 import { ItemRegistry } from '../items/ItemRegistry.js';
 import { findSmeltingRecipe } from '../items/CraftingRecipes.js';
-import { renderSlotContent, attachTooltip, hideTooltip, makeSlotEl } from './slotHelpers.js';
+import { renderSlotContent, attachTooltip, hideTooltip, makeSlotEl, bindSlotClicks } from './slotHelpers.js';
+import { insertIntoSlots } from '../items/Inventory.js';
 import { globalEvents } from '../core/EventBus.js';
 
 /**
@@ -42,9 +43,9 @@ export class SmelterUI {
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:14px;margin-bottom:20px;';
     const col = document.createElement('div');
-    this.inputEl = makeSlotEl(); this.inputEl.addEventListener('click', () => this._click('input'));
+    this.inputEl = makeSlotEl(); bindSlotClicks(this.inputEl, (mods) => this._click('input', mods));
     attachTooltip(this.inputEl, () => this.state.input);
-    this.fuelEl = makeSlotEl(); this.fuelEl.addEventListener('click', () => this._click('fuel'));
+    this.fuelEl = makeSlotEl(); bindSlotClicks(this.fuelEl, (mods) => this._click('fuel', mods));
     attachTooltip(this.fuelEl, () => this.state.fuel);
     col.append(this.inputEl, this.fuelEl);
     col.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
@@ -56,7 +57,7 @@ export class SmelterUI {
     this.progressWrap.appendChild(this.progressFill);
 
     this.outputEl = makeSlotEl(); this.outputEl.style.width = '60px'; this.outputEl.style.height = '60px';
-    this.outputEl.addEventListener('click', () => this._clickOutput());
+    bindSlotClicks(this.outputEl, (mods) => this._clickOutput(mods));
     attachTooltip(this.outputEl, () => this.state.output);
 
     row.append(col, this.progressWrap, this.outputEl);
@@ -72,7 +73,7 @@ export class SmelterUI {
     this._mainEls = [];
     for (let i = 0; i < this.inv.slots.length; i++) {
       const el = makeSlotEl();
-      el.addEventListener('click', () => this._click(i));
+      bindSlotClicks(el, (mods) => this._click(i, mods));
       attachTooltip(el, () => this.inv.slots[i]);
       grid.appendChild(el);
       this._mainEls.push(el);
@@ -94,15 +95,35 @@ export class SmelterUI {
   _get(ref) { return ref === 'input' ? this.state.input : ref === 'fuel' ? this.state.fuel : this.inv.slots[ref]; }
   _set(ref, v) { if (ref === 'input') this.state.input = v; else if (ref === 'fuel') this.state.fuel = v; else this.inv.slots[ref] = v; }
 
-  _click(ref) {
+  /**
+   * Left click takes/places a whole stack, right click takes half or places
+   * a single item, shift + left click moves the stack between the smelter
+   * and the inventory. Same gestures as every other slot in the game.
+   */
+  _click(ref, { half = false, shift = false } = {}) {
+    if (shift) { this._quickMove(ref); return; }
     const slot = this._get(ref);
     if (!this.cursor) {
-      if (slot) { this.cursor = slot; this._set(ref, null); }
+      if (slot) {
+        if (half && slot.count > 1) {
+          const take = Math.ceil(slot.count / 2);
+          this.cursor = { ...slot, count: take };
+          this._set(ref, { ...slot, count: slot.count - take });
+        } else {
+          this.cursor = slot; this._set(ref, null);
+        }
+      }
     } else if (!slot) {
-      this._set(ref, this.cursor); this.cursor = null;
+      if (half) {
+        this._set(ref, { ...this.cursor, count: 1 });
+        this.cursor.count -= 1;
+        if (this.cursor.count <= 0) this.cursor = null;
+      } else {
+        this._set(ref, this.cursor); this.cursor = null;
+      }
     } else if (slot.id === this.cursor.id) {
       const room = (ItemRegistry.get(slot.id)?.stackSize ?? 64) - slot.count;
-      const move = Math.min(room, this.cursor.count);
+      const move = Math.min(room, this.cursor.count, half ? 1 : Infinity);
       slot.count += move; this.cursor.count -= move;
       if (this.cursor.count <= 0) this.cursor = null;
     } else {
@@ -112,8 +133,35 @@ export class SmelterUI {
     this.refresh();
   }
 
-  _clickOutput() {
+  /** Shift + click: inventory slots feed the smelter, its slots empty into the inventory. */
+  _quickMove(ref) {
+    const stack = this._get(ref);
+    if (!stack) return;
+    const fromInventory = typeof ref === 'number';
+    let leftover;
+    if (fromInventory) {
+      // Fuel goes to the fuel slot, anything smeltable to the input slot.
+      const target = ItemRegistry.get(stack.id)?.fuel > 0 && !findSmeltingRecipe(stack.id) ? 'fuel' : 'input';
+      const holder = [this._get(target)];
+      leftover = insertIntoSlots(holder, stack);
+      this._set(target, holder[0]);
+    } else {
+      leftover = insertIntoSlots(this.inv.slots, stack);
+    }
+    this._set(ref, leftover);
+    globalEvents.emit('inventory:changed');
+    this.refresh();
+  }
+
+  _clickOutput({ shift = false } = {}) {
     if (!this.state.output) return;
+    if (shift) {
+      const leftover = insertIntoSlots(this.inv.slots, this.state.output);
+      this.state.output = leftover;
+      globalEvents.emit('inventory:changed');
+      this.refresh();
+      return;
+    }
     if (this.cursor && this.cursor.id !== this.state.output.id) return;
     if (this.cursor) this.cursor.count += this.state.output.count;
     else this.cursor = this.state.output;
@@ -167,6 +215,7 @@ export class SmelterUI {
     window.removeEventListener('mousemove', this._onMouseMove);
     hideTooltip();
     this.el.remove();
+    this._cursorEl.remove(); // lives outside the panel, so it needs removing too
     globalEvents.emit('inventory:changed');
   }
 }
