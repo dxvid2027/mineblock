@@ -27,7 +27,7 @@ export const LOAM = reg({
 export const STONE = reg({
   name: 'stone', displayName: 'Stone', category: 'terrain', hardness: 1.5, toolType: 'pickaxe',
   drops: 'cobbled_stone',
-  texture: { all: T('speckle', '#8a8a8f', { grain: '#77777c' }) }
+  texture: { all: T('speckle', '#8a8a8f', { grain: '#6e6e75' }) }
 });
 export const COBBLED_STONE = reg({
   name: 'cobbled_stone', displayName: 'Cobbled Stone', category: 'terrain', hardness: 2, toolType: 'pickaxe',
@@ -43,7 +43,7 @@ export const RED_SAND = reg({
 });
 export const GRAVEL = reg({
   name: 'gravel', displayName: 'Gravel', category: 'terrain', hardness: 0.6, toolType: 'shovel', gravity: true,
-  texture: { all: T('speckle', '#8d8579', { grain: '#726a5f' }) }
+  texture: { all: T('cobble', '#8d8579', { grain: '#726a5f', cells: 6 }) }
 });
 export const CLAY = reg({
   name: 'clay', displayName: 'Clay', category: 'terrain', hardness: 0.6, toolType: 'shovel',
@@ -76,37 +76,37 @@ export const MOSSY_STONE = reg({
 export const RUDDLE_ORE = reg({
   name: 'ruddle_ore', displayName: 'Ruddle Ore', category: 'ore', hardness: 2, toolType: 'pickaxe', minToolTier: 0,
   drops: 'ruddle_chunk', dropCount: [1, 2],
-  texture: { all: T('speckle', '#8a8a8f', { grain: '#c17a4c' }) }
+  texture: { all: T('ore', '#8a8a8f', { grain: '#c17a4c' }) }
 });
 export const GLINT_ORE = reg({
   name: 'glint_ore', displayName: 'Glint Ore', category: 'ore', hardness: 2, toolType: 'pickaxe', minToolTier: 1,
   drops: 'glint_chunk', dropCount: [1, 2],
-  texture: { all: T('speckle', '#8a8a8f', { grain: '#c9d6d6' }) }
+  texture: { all: T('ore', '#8a8a8f', { grain: '#c9d6d6' }) }
 });
 export const FERRITE_ORE = reg({
   name: 'ferrite_ore', displayName: 'Ferrite Ore', category: 'ore', hardness: 3, toolType: 'pickaxe', minToolTier: 1,
   drops: 'ferrite_chunk', dropCount: [1, 2],
-  texture: { all: T('speckle', '#8a8a8f', { grain: '#b8926a' }) }
+  texture: { all: T('ore', '#8a8a8f', { grain: '#b8926a' }) }
 });
 export const AURUM_ORE = reg({
   name: 'aurum_ore', displayName: 'Aurum Ore', category: 'ore', hardness: 3, toolType: 'pickaxe', minToolTier: 2,
   drops: 'aurum_chunk', dropCount: [1, 2],
-  texture: { all: T('speckle', '#8a8a8f', { grain: '#e8cf4f' }) }
+  texture: { all: T('ore', '#8a8a8f', { grain: '#e8cf4f' }) }
 });
 export const GLIMMERSTONE_ORE = reg({
   name: 'glimmerstone_ore', displayName: 'Glimmerstone Ore', category: 'ore', hardness: 4, toolType: 'pickaxe', minToolTier: 2,
   drops: 'glimmer_shard', dropCount: [1, 1],
-  texture: { all: T('speckle', '#6f7bb0', { grain: '#8fe9e0' }) }
+  texture: { all: T('ore', '#6f7bb0', { grain: '#8fe9e0' }) }
 });
 export const VOIDSHARD_ORE = reg({
   name: 'voidshard_ore', displayName: 'Voidshard Ore', category: 'ore', hardness: 5, toolType: 'pickaxe', minToolTier: 4,
   drops: 'voidshard', dropCount: [1, 1], lightEmission: 4,
-  texture: { all: T('speckle', '#2a2338', { grain: '#a35bff' }) }
+  texture: { all: T('ore', '#2a2338', { grain: '#a35bff' }) }
 });
 export const CHAR_COAL_SEAM = reg({
   name: 'char_seam', displayName: 'Char Seam', category: 'ore', hardness: 1.5, toolType: 'pickaxe',
   drops: 'char_lump', dropCount: [1, 3],
-  texture: { all: T('speckle', '#8a8a8f', { grain: '#2b2b2e' }) }
+  texture: { all: T('ore', '#8a8a8f', { grain: '#2b2b2e' }) }
 });
 
 // ---------------------------------------------------------------------- //
@@ -247,7 +247,7 @@ export const TORCH = reg({
 });
 export const GLOWSTONE_LANTERN = reg({
   name: 'glow_lantern', displayName: 'Glowstone Lantern', category: 'functional', hardness: 1, toolType: 'pickaxe',
-  lightEmission: 15, texture: { all: T('speckle', '#f2e6a8', { grain: '#e0d27a' }) }
+  lightEmission: 15, texture: { all: T('ore', '#efe3a2', { grain: '#fff3a8' }) }
 });
 export const RIFTSTONE = reg({
   name: 'riftstone', displayName: 'Riftstone', category: 'functional', hardness: 8, toolType: 'pickaxe', minToolTier: 4,
@@ -335,7 +335,7 @@ export const EMBER_DUST = reg({
 export const SULFUR_CRYSTAL = reg({
   name: 'sulfur_crystal', displayName: 'Sulfur Crystal', category: 'ore', hardness: 3, toolType: 'pickaxe', minToolTier: 2,
   drops: 'sulfur_shard', dropCount: [1, 2], lightEmission: 5,
-  texture: { all: T('speckle', '#4a3f42', { grain: '#e0d24a' }) }
+  texture: { all: T('ore', '#4a3f42', { grain: '#e0d24a' }) }
 });
 export const CINDER_LOG = reg({
   name: 'cinder_log', displayName: 'Cinderwood Log', category: 'wood', hardness: 1.5, toolType: 'axe',

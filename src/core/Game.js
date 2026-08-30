@@ -21,6 +21,7 @@ import { SaveManager } from './SaveManager.js';
 import { globalEvents } from './EventBus.js';
 
 import { DebugRenderer } from '../render/DebugRenderer.js';
+import { BlockEffects } from '../render/BlockEffects.js';
 import { DebugOverlay } from '../ui/DebugOverlay.js';
 import { HUD } from '../ui/HUD.js';
 import { InventoryScreen } from '../ui/InventoryScreen.js';
@@ -136,6 +137,9 @@ export class Game {
 
     this.hud = new HUD(this.uiRoot, this.player);
     this.debugRenderer = new DebugRenderer(this.scene);
+    this.blockEffects = new BlockEffects(this.scene);
+    this._offBlockBroken = globalEvents.on('block:broken', ({ x, y, z, blockId }) =>
+      this.blockEffects.burst(x, y, z, blockId));
     this.debugOverlay = new DebugOverlay(this.uiRoot);
     this.loading.destroy();
     this.state = 'playing';
@@ -203,9 +207,13 @@ export class Game {
       this.input.updateFallbackLook(dt);
       this.controller.update(dt, this.world);
       this.interaction.update(dt);
+      this.blockEffects.update(dt, this.interaction.target, this.interaction.breaking);
       this.entities.update(dt, this.player, this.dayNight, this.input, this.interaction);
     } else {
       this.player.velocity.set(0, this.player.velocity.y, 0);
+      // No crosshair target while a panel is open, but debris already in the
+      // air keeps falling.
+      this.blockEffects.update(dt, null, null);
       this.activeWorkstation.ui.update?.(dt);
     }
 
@@ -440,6 +448,8 @@ export class Game {
     this.sky?.dispose(this.scene);
     this.world?.dispose();
     this.debugRenderer?.dispose();
+    this.blockEffects?.dispose();
+    this._offBlockBroken?.();
     this.debugOverlay?.dispose();
   }
 }

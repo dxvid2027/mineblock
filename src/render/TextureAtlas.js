@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { BlockRegistry } from '../blocks/BlockRegistry.js';
 import { drawPattern } from './PatternDraw.js';
 
-const TILE_SIZE = 16; // classic blocky pixel-art resolution per face
+const TILE_SIZE = 32; // pixel-art resolution per block face
 
 // Builds one square canvas atlas containing every block face texture, and
 // exposes per-block/per-face UV rectangles for the chunk mesher to sample.

@@ -115,6 +115,9 @@ export class Interaction {
     if (!canHarvest(block, toolDef)) dropId = null;
 
     this.world.setBlockGlobal(target.x, target.y, target.z, 0);
+    // Announced so the effects layer can throw debris in the block's own
+    // colors; the block is already gone from the world by this point.
+    globalEvents.emit('block:broken', { x: target.x, y: target.y, z: target.z, blockId: target.blockId });
     if (dropId) {
       globalEvents.emit('item:drop', {
         id: dropId, count: dropCount,

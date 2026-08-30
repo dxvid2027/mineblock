@@ -28,7 +28,16 @@ code were copied from any existing game.
   Featherstep, Windward, Aqua Ease, Thorned Ward, Emberlight).
 - **All original graphics**: every block face and item icon is generated
   procedurally at startup by algorithmic pixel-art routines
-  (`src/render/PatternDraw.js`) — nothing is loaded from an image file.
+  (`src/render/PatternDraw.js`) — nothing is loaded from an image file. Each
+  material is painted on a 32x32 grid from wrapping value noise quantized into
+  flat tone steps, lit from one shared direction, so stone reads as rock and
+  planks as sawn boards rather than as tinted squares. Items are drawn as
+  shaded sprites with a dark outline, and a block in the inventory is shown as
+  a small isometric cube wearing its own top and side textures.
+- **Visible mining**: the block under the crosshair is outlined, cracks spread
+  across it in ten stages as you break it, chips fly off the face you are
+  striking, and it bursts into debris in its own colors when it gives way
+  (`src/render/BlockEffects.js`).
 - **Random world spawn**: every new world starts at a different, seed-derived
   location, vetted to be dry land above sea level on reasonably even ground.
 - **Ten generated structures with loot**, spread across both dimensions and
@@ -269,7 +278,8 @@ src/
   entities/         Entity/Player/Mob base classes, creature roster, spawner
   player/           First-person controller, block interaction, survival
   magic/            The Infusion (enchantment-like) system
-  render/           Procedural texture atlas, item icons, mob models, sky
+  render/           Procedural texture atlas, item icons, mob models, sky,
+                     block outline/crack/debris effects
   ui/               Main menu, HUD, inventory/crafting/smelter/runeforge
                      screens, settings, pause/death/victory/loading screens
   public/           Static web assets: icons, PWA manifest, service worker,
