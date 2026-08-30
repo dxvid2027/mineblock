@@ -22,6 +22,7 @@ import { globalEvents } from './EventBus.js';
 
 import { DebugRenderer } from '../render/DebugRenderer.js';
 import { BlockEffects } from '../render/BlockEffects.js';
+import { disposeSkins } from '../render/MobSkins.js';
 import { DebugOverlay } from '../ui/DebugOverlay.js';
 import { HUD } from '../ui/HUD.js';
 import { InventoryScreen } from '../ui/InventoryScreen.js';
@@ -449,6 +450,7 @@ export class Game {
     this.world?.dispose();
     this.debugRenderer?.dispose();
     this.blockEffects?.dispose();
+    disposeSkins(); // creature hides are cached across mobs, not per mob
     this._offBlockBroken?.();
     this.debugOverlay?.dispose();
   }

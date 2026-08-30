@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Mob } from './Mob.js';
+import { disposeMobMesh } from '../render/MobModels.js';
 import { Entity } from './Entity.js';
 import { CREATURES } from './creatures/CreatureTypes.js';
 import { ItemRegistry } from '../items/ItemRegistry.js';
@@ -62,7 +63,7 @@ export class EntityManager {
 
   setWorld(world) {
     this.world = world;
-    for (const m of this.mobs) this.group.remove(m.mesh);
+    for (const m of this.mobs) { this.group.remove(m.mesh); disposeMobMesh(m.mesh); }
     for (const d of this.drops) this.group.remove(d.mesh);
     this.mobs = [];
     this.drops = [];
@@ -186,6 +187,7 @@ export class EntityManager {
       }
       if (dist > DESPAWN_DIST && !mob.species.boss) {
         this.group.remove(mob.mesh);
+        disposeMobMesh(mob.mesh);
         this.mobs.splice(i, 1);
       }
     }
@@ -198,6 +200,7 @@ export class EntityManager {
       if (count > 0) this.spawnDrop(drop.id, count, { x: mob.position.x, y: mob.position.y + 0.5, z: mob.position.z });
     }
     this.group.remove(mob.mesh);
+    disposeMobMesh(mob.mesh);
     this.mobs.splice(index, 1);
     if (mob.species.boss) this.bossAlive = false;
     globalEvents.emit('entity:mobKilled', mob.species);

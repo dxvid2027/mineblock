@@ -991,4 +991,12 @@ export function drawIcon(ctx, size, shape, color) {
   outlineSprite(ctx, size);
 }
 
+/**
+ * The pixel-art toolkit these patterns are built from, shared with the
+ * creature skins in MobSkins.js so blocks and mobs are drawn the same way:
+ * wrapping noise quantized into flat tone steps, integer-aligned rectangles,
+ * one light direction.
+ */
+export const pixelArt = { makeRng, makeNoise, paint, px, bevel, step, shade, shadeRgb, mixRgb, hexToRgb, css };
+
 export { shade };

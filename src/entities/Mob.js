@@ -21,6 +21,8 @@ export class Mob extends Entity {
     this._attackCooldown = 0;
     this._stuckTimer = 0;
     this._fleeTimer = 0;
+    this._animTime = Math.random() * 10; // desync identical species
+    this._hurtFlash = 0;
     this.mesh = buildMobMesh(species);
     this.id = `${species.id}-${Math.random().toString(36).slice(2, 9)}`;
   }
@@ -85,11 +87,19 @@ export class Mob extends Entity {
       if (moveX !== 0 || moveZ !== 0) {
         this.mesh.rotation.y = Math.atan2(moveX, moveZ);
       }
+      // Drive the model's own animation from how fast it is actually moving,
+      // not from how fast it wants to move: a creature pushed up against a
+      // wall should stop walking on the spot.
+      this._animTime += dt;
+      if (this._hurtFlash > 0) this._hurtFlash = Math.max(0, this._hurtFlash - dt * 4);
+      const groundSpeed = Math.hypot(this.velocity.x, this.velocity.z);
+      this.mesh.userData.animate?.(this._animTime, groundSpeed, this._hurtFlash);
     }
   }
 
   damage(amount, source) {
     super.damage(amount);
+    this._hurtFlash = 1;
     if (!this.species.hostile) this._fleeTimer = 4;
   }
 }

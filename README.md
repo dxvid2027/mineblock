@@ -38,6 +38,15 @@ code were copied from any existing game.
   across it in ten stages as you break it, chips fly off the face you are
   striking, and it bursts into debris in its own colors when it gives way
   (`src/render/BlockEffects.js`).
+- **Creatures with their own shapes**: every species is built from boxes to
+  its own silhouette — a Grazer's muzzle and ears, a Frostfang's snout and
+  hackles, six splayed legs on the crawlers, the Rockjaw's slab jaw and spine
+  plates, the Gloomlurker's translucent shell and hanging wisps — wearing a
+  procedurally drawn hide (`src/render/MobSkins.js`: hide, fur, frost, chitin,
+  stone, molten, slime, grub). Legs swing while walking, heads bob and glance
+  around when idle, tails sway, blobs breathe, flames flicker, and a struck
+  creature flashes red. Eyes and glowing parts are drawn unlit so they stay
+  visible in a dark cave.
 - **Random world spawn**: every new world starts at a different, seed-derived
   location, vetted to be dry land above sea level on reasonably even ground.
 - **Ten generated structures with loot**, spread across both dimensions and
@@ -286,8 +295,8 @@ src/
   entities/         Entity/Player/Mob base classes, creature roster, spawner
   player/           First-person controller, block interaction, survival
   magic/            The Infusion (enchantment-like) system
-  render/           Procedural texture atlas, item icons, mob models, sky,
-                     block outline/crack/debris effects
+  render/           Procedural texture atlas, item icons, creature models and
+                     hides, sky, block outline/crack/debris effects
   ui/               Main menu, HUD, inventory/crafting/smelter/runeforge
                      screens, settings, pause/death/victory/loading screens
   public/           Static web assets: icons, PWA manifest, service worker,
