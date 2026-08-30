@@ -84,23 +84,22 @@ npm install
 npm run dev        # Vite dev server + Electron, with hot reload
 ```
 
-To build a distributable desktop app:
-
 ```bash
-npm run build       # electron-builder output lands in release/
-```
-
-`npm start` builds the renderer once and launches Electron against the
-static build (useful for a quick production-mode smoke test without
-packaging an installer).
-
-For the browser version:
-
-```bash
-npm run build:web      # static site in dist/
-npm run preview:web    # serve it locally at http://localhost:4173
+npm run build          # the web build -> dist/   (also aliased as build:web)
+npm run preview:web    # serve dist/ at http://localhost:4173
 npm test               # data-integrity and progression checks
 ```
+
+`npm run build` is deliberately the *web* build: hosting platforms, including
+Cloudflare Pages, auto-detect and run that script, and packaging a desktop
+installer there both fails and makes no sense. Desktop packaging is explicit:
+
+```bash
+npm run build:desktop  # electron-builder output lands in release/
+```
+
+`npm start` builds once and launches Electron against the static build, for a
+quick production-mode check without packaging an installer.
 
 ## Playing on an iPad (or any tablet/phone)
 
@@ -136,7 +135,7 @@ Git*, pick this repo and set
 
 | Setting | Value |
 | --- | --- |
-| Build command | `npm run build:web` |
+| Build command | `npm run build` |
 | Output directory | `dist` |
 | Node version | 22 |
 
@@ -170,11 +169,16 @@ git add package.json package-lock.json
 ```
 
 Reproduce a Pages build locally before pushing — this is exactly what
-Cloudflare runs:
+Cloudflare runs, and run it from a fresh `git clone` rather than your working
+copy, so untracked files cannot mask a missing commit:
 
 ```bash
-npm ci && npm run build:web
+npm ci && npm run build
 ```
+
+**Failure during "Building".** Check which command Pages is running. It
+auto-detects `npm run build`, which builds the website; `npm run build:desktop`
+would try to package an Electron installer and cannot work on a web host.
 
 **Slow installs.** `electron` and `electron-builder` are development
 dependencies for the desktop app, and Electron's postinstall downloads a
