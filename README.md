@@ -152,9 +152,38 @@ tests and publishes on every push. Add two repository secrets and it takes
 over: `CLOUDFLARE_API_TOKEN` (a token with *Cloudflare Pages: Edit*) and
 `CLOUDFLARE_ACCOUNT_ID`.
 
-`wrangler.toml` already points Pages at `dist`, and `src/public/_headers` sets
-long-lived caching for the fingerprinted assets while keeping `index.html` and
-`sw.js` uncached, so a deploy reaches players immediately.
+`wrangler.toml` already points Pages at `dist`, `.node-version` pins Node 22
+(Cloudflare's default is older than Vite 5 supports), and
+`src/public/_headers` sets long-lived caching for the fingerprinted assets
+while keeping `index.html` and `sw.js` uncached, so a deploy reaches players
+immediately.
+
+### If the Cloudflare build fails
+
+**Failure during "Installing dependencies".** Cloudflare runs `npm ci`, which
+refuses to run when `package.json` and `package-lock.json` disagree. Any time
+a dependency changes, commit the regenerated lockfile alongside it:
+
+```bash
+npm install            # or: npm install --package-lock-only
+git add package.json package-lock.json
+```
+
+Reproduce a Pages build locally before pushing — this is exactly what
+Cloudflare runs:
+
+```bash
+npm ci && npm run build:web
+```
+
+**Slow installs.** `electron` and `electron-builder` are development
+dependencies for the desktop app, and Electron's postinstall downloads a
+~266 MB binary the web build never uses. Adding the environment variable
+`ELECTRON_SKIP_BINARY_DOWNLOAD` = `1` in the Pages project settings roughly
+halves install time. (It has to be a real environment variable: putting it in
+`.npmrc` does not work, because npm exposes those settings as `npm_config_*`
+and Electron reads the plain name.) The GitHub Actions workflow already sets
+it.
 
 ## Controls
 

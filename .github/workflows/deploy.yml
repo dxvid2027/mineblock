@@ -13,6 +13,13 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+env:
+  # Electron's postinstall pulls a ~266 MB binary that only the desktop build
+  # ever uses. Skipping it roughly halves install time here and on any other
+  # web-only build. Electron reads this exact variable name; note that putting
+  # it in .npmrc does not work, as npm exposes those as npm_config_* instead.
+  ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
