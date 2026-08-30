@@ -71,6 +71,63 @@ test('landmarks fit under the world ceiling', () => {
   }
 });
 
+/**
+ * Runs a landmark's build() against an api that records where it writes
+ * instead of storing anything, and never refuses a column — so it reports
+ * the whole structure, not the slice one chunk happens to hold.
+ */
+function buildExtent(mega) {
+  let minDy = Infinity, maxDy = -Infinity, maxSpan = 0;
+  const note = (dx, dy, dz) => {
+    if (dy < minDy) minDy = dy;
+    if (dy > maxDy) maxDy = dy;
+    maxSpan = Math.max(maxSpan, Math.abs(dx), Math.abs(dz));
+  };
+  let state = 1;
+  mega.build({
+    rng: () => { state = (state * 1103515245 + 12345) >>> 0; return state / 4294967296; },
+    groundY: 0,
+    column: () => true,
+    set: note,
+    air: note,
+    crate: note
+  });
+  return { minDy, maxDy, maxSpan };
+}
+
+test('a landmark never builds beyond the size it declares', () => {
+  // `height` and `radius` are what the placement rule reasons about. If the
+  // build reaches past them the extra is not merely unplanned — it is
+  // silently clipped away by the chunk it falls outside, which is how the
+  // Hollow Spire lost its crown, and how its lanterns ended up jammed against
+  // the world ceiling where the light flood used to run away.
+  for (const mega of MEGA_STRUCTURES) {
+    const { maxDy, maxSpan } = buildExtent(mega);
+    assert.ok(maxDy < mega.height,
+      `"${mega.id}" builds ${maxDy + 1} blocks up but declares height ${mega.height}`);
+    assert.ok(maxSpan <= mega.radius,
+      `"${mega.id}" builds ${maxSpan} blocks out but declares radius ${mega.radius}`);
+  }
+});
+
+test('no landmark is ever placed where the world would cut its top off', () => {
+  for (const dimId of ['overworld', 'ember_expanse']) {
+    const extents = new Map(MEGA_STRUCTURES.map((m) => [m.id, buildExtent(m)]));
+    let placements = 0;
+    for (let rz = -4; rz <= 4; rz++) {
+      for (let rx = -4; rx <= 4; rx++) {
+        const placed = placementFor(dimId, rx, rz);
+        if (!placed) continue;
+        placements++;
+        const top = placed.y + extents.get(placed.mega.id).maxDy;
+        assert.ok(top < CHUNK_HEIGHT,
+          `${dimId} region ${rx},${rz}: "${placed.mega.id}" would reach y=${top}, past the ceiling at ${CHUNK_HEIGHT}`);
+      }
+    }
+    assert.ok(placements > 0, `no ${dimId} landmark was placed anywhere in an 9x9 block of regions`);
+  }
+});
+
 for (const dimId of ['overworld', 'ember_expanse']) {
   test(`the ${dimId} landmark is built, and spans several chunks`, () => {
     const placed = placementFor(dimId, 0, 0);

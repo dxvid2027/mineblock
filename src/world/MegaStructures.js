@@ -109,11 +109,18 @@ export const MEGA_STRUCTURES = [
     displayName: 'The Hollow Spire',
     dimensions: ['overworld'],
     radius: 15,   // half-width of the footprint, for region and chunk overlap
+    // The tallest block this build places, measured from the base — the
+    // crown slab at 1 + floors * storey + 5. Placement uses it to keep the
+    // whole tower under the world ceiling, so it must stay >= what build()
+    // actually reaches (tests/megastructures.test.js checks that it does).
+    // Six storeys is what fits: the overworld only ever offers ground
+    // between the shoreline and y=68, and a seventh put the crown — and its
+    // lanterns — above y=128, where it was silently sliced off.
     height: 56,
     loot: 'hollow_spire',
     build(api) {
       const S = 'stone_bricks', P = 'polished_stone';
-      const floors = 7, storey = 8;
+      const floors = 6, storey = 8;
 
       // Plinth and the ground it stands on.
       box(api, -14, -2, -14, 14, 0, 14, S);
@@ -165,7 +172,7 @@ export const MEGA_STRUCTURES = [
       // Loot: low, halfway up, and at the top, so the climb pays three times.
       api.crate(-5, 2, 5, 'hollow_spire');
       api.crate(3, 1 + storey * 3 + 1, -3, 'hollow_spire');
-      api.crate(0, 1 + storey * 6 + 1, 2, 'hollow_spire');
+      api.crate(0, 1 + storey * (floors - 1) + 1, 2, 'hollow_spire');
 
       // The crown: an open lantern chamber above the last storey.
       const top = 1 + floors * storey;
@@ -179,7 +186,7 @@ export const MEGA_STRUCTURES = [
       api.set(0, top + 2, 0, 'glow_lantern');
 
       // The top third has stood the longest and shows it.
-      erode(api, -8, 1 + storey * 5, -8, 8, top + 5, 8, 0.06);
+      erode(api, -8, 1 + storey * (floors - 2), -8, 8, top + 5, 8, 0.06);
     }
   },
 
@@ -225,8 +232,14 @@ export const MEGA_STRUCTURES = [
       shell(api, -4, 1, -4, 4, 42, 4, A, 1);
       for (let y = 6; y <= 40; y += 6) ring(api, -4, -4, 4, 4, y, B);
       box(api, -2, 1, -2, 2, 1, 2, 'magma');
-      for (let y = 2; y <= 40; y++) { // interior kept clear
-        for (let x = -3; x <= 3; x++) for (let z = -3; z <= 3; z++) api.air(x, y, z);
+      // Columns outside, height inside, and skip the column the moment it
+      // falls outside the chunk being built — the same shape as the helpers
+      // above, and for the same reason.
+      for (let x = -3; x <= 3; x++) {
+        for (let z = -3; z <= 3; z++) {
+          if (!api.column(x, z)) continue;
+          for (let y = 2; y <= 40; y++) api.air(x, y, z); // interior kept clear
+        }
       }
 
       // Four magma channels running from the chimney to the outer wall.

@@ -19,6 +19,9 @@ export class Chunk {
     this.heightMap = new Int16Array(PLANE).fill(-1); // topmost solid Y per column
     this.entities = []; // mobs/items currently in this chunk (see World)
     this.blockEntities = new Map(); // "x,y,z" -> { type, ...state } for interactive blocks
+    // "x,y,z" (local) -> emission level. Kept on the chunk rather than in one
+    // world-wide map so an emitter is forgotten the moment its chunk unloads.
+    this.lightSources = new Map();
     this.dirty = true; // needs remeshing
     this.diffs = new Map(); // "x,y,z" -> blockId, only cells changed from generation
     this.generated = false;
