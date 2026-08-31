@@ -1,14 +1,5 @@
 import { BlockRegistry } from '../blocks/BlockRegistry.js';
-
-// yaw=0 faces -Z ("North" by this game's convention); increasing yaw
-// rotates toward -X ("West") — see PlayerController's move-vector math.
-const CARDINALS = ['N', 'NW', 'W', 'SW', 'S', 'SE', 'E', 'NE'];
-
-function cardinalFromYaw(yaw) {
-  const norm = ((yaw % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-  const index = Math.round(norm / (Math.PI / 4)) % 8;
-  return CARDINALS[index];
-}
+import { cardinalFromYaw } from '../core/compass.js';
 
 /**
  * F3-style debug info panel toggled with 'O': position, chunk, facing,

@@ -13,6 +13,7 @@ import { SurvivalSystem } from '../player/SurvivalSystem.js';
 import { EntityManager } from '../entities/EntityManager.js';
 import { ItemRegistry, itemDurability } from '../items/ItemRegistry.js';
 import { BlockRegistry } from '../blocks/BlockRegistry.js';
+import { cardinalTowards } from './compass.js';
 import { rollLoot } from '../world/Structures.js';
 import { getInfusionLevel } from '../magic/InfusionSystem.js';
 
@@ -239,7 +240,7 @@ export class Game {
 
     this._updateEmberlight();
     this._updateBossWatch(dt);
-    this.hud.update(this.world, this.dayNight, this.interaction, this.entities.boss);
+    this.hud.update(this.world, this.dayNight, this.interaction, this.entities.boss, this._currentObjective());
     this.debugRenderer.update(this.world, this.entities, this.player);
     this.debugOverlay.trackFrame(dt);
     this.debugOverlay.update({ world: this.world, player: this.player, dayNight: this.dayNight, interaction: this.interaction, entities: this.entities, weather: this.weather });
@@ -452,8 +453,10 @@ export class Game {
    * falls.
    */
   _updateBossWatch(dt) {
-    if (this.bossDefeated || this.entities.bossAlive) return;
-    if (this.world.dimensionId !== 'ember_expanse') return;
+    if (this.bossDefeated || this.entities.bossAlive || this.world.dimensionId !== 'ember_expanse') {
+      this._lairTarget = null;
+      return;
+    }
 
     // Landmark placement is cheap but not free, and nothing about it changes
     // between frames.
@@ -463,6 +466,7 @@ export class Game {
 
     const px = this.player.position.x, pz = this.player.position.z;
     const lair = this.world.generator.megaStructureNear?.(px, pz);
+    this._lairTarget = lair ? { x: lair.x, y: lair.y, z: lair.z } : null;
     if (!lair) return;
     const distance = Math.hypot(lair.x - px, lair.z - pz);
 
@@ -479,6 +483,21 @@ export class Game {
     if (!spot) return; // the forge's chunks are not loaded yet; try again shortly
     this.entities.spawnMob('cinder_warden', spot);
     globalEvents.emit('ui:toast', 'The Cinder Warden rises from the forge floor.');
+  }
+
+  /**
+   * What the HUD should point the player toward right now, or null when
+   * there is nothing outstanding.
+   */
+  _currentObjective() {
+    if (!this._lairTarget) return null;
+    const dx = this._lairTarget.x - this.player.position.x;
+    const dz = this._lairTarget.z - this.player.position.z;
+    return {
+      label: 'Emberforge',
+      distance: Math.hypot(dx, dz),
+      cardinal: cardinalTowards(dx, dz)
+    };
   }
 
   /**

@@ -15,6 +15,7 @@ export class HUD {
       <div class="crosshair" id="hud-crosshair"></div>
       <div class="dimension-tag" id="hud-dimension"></div>
       <div class="biome-tag" id="hud-biome"></div>
+      <div class="objective-tag" id="hud-objective" style="display:none;"></div>
       <div class="clock" id="hud-clock"></div>
       <div class="boss-bar" id="hud-bossbar" style="display:none;">
         <div class="boss-name" id="hud-boss-name"></div>
@@ -69,8 +70,22 @@ export class HUD {
 
   /** Hides the small dimension/biome tags while the fuller debug overlay (O) covers the same corner. */
   setTagsVisible(visible) {
+    this.el.querySelector('#hud-objective').style.visibility = visible ? '' : 'hidden';
     this.el.querySelector('#hud-dimension').style.display = visible ? '' : 'none';
     this.el.querySelector('#hud-biome').style.display = visible ? '' : 'none';
+  }
+
+  /**
+   * A standing signpost for the one place the player currently needs to
+   * reach. The Ember Expanse fogs out at 90 blocks and the Emberforge is
+   * usually further off than that, so without a bearing there is nothing to
+   * walk toward — you would be searching a featureless plain by luck.
+   */
+  _updateObjective(objective) {
+    const el = this.el.querySelector('#hud-objective');
+    if (!objective) { el.style.display = 'none'; return; }
+    el.style.display = '';
+    el.textContent = `${objective.label} · ${Math.round(objective.distance)}m ${objective.cardinal}`;
   }
 
   _refreshHotbar() {
@@ -82,7 +97,7 @@ export class HUD {
     renderSlotContent(this.offhandEl, inv.offhand);
   }
 
-  update(world, dayNight, interaction, boss = null) {
+  update(world, dayNight, interaction, boss = null, objective = null) {
     const p = this.player;
     const hearts = this.el.querySelector('#hud-hearts');
     const hunger = this.el.querySelector('#hud-hunger');
@@ -135,6 +150,7 @@ export class HUD {
     this.el.querySelector('#hud-clock').textContent = `${dayNight.formattedClock()} · Day ${dayNight.day}`;
 
     this._updateBossBar(boss);
+    this._updateObjective(objective);
 
     const hint = this.el.querySelector('#hud-hint');
     if (interaction.target) {

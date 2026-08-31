@@ -18,6 +18,7 @@ import { CREATURES } from '../src/entities/creatures/CreatureTypes.js';
 import { EntityManager } from '../src/entities/EntityManager.js';
 import { MEGA_STRUCTURES } from '../src/world/MegaStructures.js';
 import { DIMENSIONS } from '../src/dimensions/Dimensions.js';
+import { cardinalTowards } from '../src/core/compass.js';
 
 registerBlockItems();
 
@@ -91,4 +92,18 @@ test('the Warden drops what the victory screen says he does', () => {
   for (const drop of CREATURES.cinder_warden.drops) {
     assert.ok(BlockRegistry.byName(drop.id) || drop.id, `unknown drop "${drop.id}"`);
   }
+});
+
+test('the objective bearing points the way the player would have to walk', () => {
+  // The Ember Expanse fogs out at 90 blocks and the Emberforge is usually
+  // further off, so the bearing is the only thing making it findable. Getting
+  // the sign wrong would send the player away from it.
+  //
+  // yaw = 0 faces -Z, so -Z is North and +X is East (see core/compass.js).
+  assert.equal(cardinalTowards(0, -10), 'N');
+  assert.equal(cardinalTowards(0, 10), 'S');
+  assert.equal(cardinalTowards(10, 0), 'E');
+  assert.equal(cardinalTowards(-10, 0), 'W');
+  assert.equal(cardinalTowards(10, -10), 'NE');
+  assert.equal(cardinalTowards(-10, 10), 'SW');
 });
