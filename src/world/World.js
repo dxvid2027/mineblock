@@ -177,9 +177,14 @@ export class World {
       for (let dx = -radius; dx <= radius; dx++) {
         const cx = pcx + dx, cz = pcz + dz;
         const key = chunkKey(cx, cz);
-        if (this.chunks.has(key)) continue;
-        const chunk = new Chunk(cx, cz);
-        this.chunks.set(key, chunk);
+        // A chunk can already exist and still be empty: update() creates it
+        // and queues it, and generation happens frames later. Skipping those
+        // meant forceLoad quietly returned with holes in the area it had
+        // promised to load — and a player teleported into one fell through
+        // the world, because even the bedrock floor had not been written yet.
+        let chunk = this.chunks.get(key);
+        if (chunk?.generated) continue;
+        if (!chunk) { chunk = new Chunk(cx, cz); this.chunks.set(key, chunk); }
         this.generator.generateChunk(chunk);
         const diffs = this.diffStore.get(key);
         if (diffs) chunk.applyDiffs(diffs);
@@ -558,8 +563,12 @@ export class World {
   /** Highest solid block Y at a world column — used to place the player/mobs on load. */
   heightAtWorld(wx, wz) {
     const chunk = this._chunkAt(wx, wz);
-    if (chunk) return chunk.topHeight(mod(wx, CHUNK_SIZE_X), mod(wz, CHUNK_SIZE_Z));
-    // Chunk not loaded yet (e.g. initial spawn calc) — sample the generator directly.
+    // `generated` matters as much as the chunk existing: an ungenerated one
+    // has an all -1 height map, which reads as "solid ground at y=-1" and
+    // drops whoever is placed on top of it out of the world.
+    if (chunk?.generated) return chunk.topHeight(mod(wx, CHUNK_SIZE_X), mod(wz, CHUNK_SIZE_Z));
+    // Not there yet (initial spawn calc, or still in the queue) — sample the
+    // generator, which answers for any column without loading anything.
     const biome = this.generator.pickBiome(wx, wz);
     return this.generator.heightAt(wx, wz, biome);
   }

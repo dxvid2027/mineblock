@@ -78,6 +78,13 @@ export class EntityManager {
     for (const d of this.drops) this.group.remove(d.mesh);
     this.mobs = [];
     this.drops = [];
+    // Changing dimension takes every mob with it, the boss included. Leaving
+    // this flag set left the game believing a Warden that no longer existed
+    // was still out there: he could never spawn again, so a player who
+    // stepped back through the portal for a moment could not finish the
+    // game, and the boss bar kept tracking a mob that had been torn down.
+    this.bossAlive = false;
+    this.boss = null;
   }
 
   spawnDrop(itemId, count, position, options) {

@@ -387,17 +387,44 @@ export class TerrainGenerator {
    * eight around it: one whose centre sits just over a region border still
    * spills across it.
    */
-  _placeMegaStructures(chunk, baseX, baseZ) {
-    const regionX = Math.floor(baseX / REGION_SIZE);
-    const regionZ = Math.floor(baseZ / REGION_SIZE);
-    const context = {
+  /** The inputs megaStructureForRegion needs, which never change for a generator. */
+  _megaContext() {
+    return this._megaCtx ?? (this._megaCtx = {
       seed: this.seed,
       dimensionId: this.dimensionId,
       hash2D,
       seaLevel: this.seaLevel,
       isEmber: this.isEmber,
       heightAt: (x, z) => this.heightAt(x, z, this.pickBiome(x, z))
-    };
+    });
+  }
+
+  /**
+   * The landmark nearest a world position, or null if the surrounding
+   * regions hold none. Answers "where is the big thing from here" without
+   * loading a single chunk — used to give the Cinder Warden a lair the
+   * player can actually walk to.
+   */
+  megaStructureNear(wx, wz) {
+    const regionX = Math.floor(wx / REGION_SIZE);
+    const regionZ = Math.floor(wz / REGION_SIZE);
+    const context = this._megaContext();
+    let best = null;
+    for (let rz = regionZ - 1; rz <= regionZ + 1; rz++) {
+      for (let rx = regionX - 1; rx <= regionX + 1; rx++) {
+        const placed = megaStructureForRegion(rx, rz, context);
+        if (!placed) continue;
+        const distance = Math.hypot(placed.x - wx, placed.z - wz);
+        if (!best || distance < best.distance) best = { ...placed, distance };
+      }
+    }
+    return best;
+  }
+
+  _placeMegaStructures(chunk, baseX, baseZ) {
+    const regionX = Math.floor(baseX / REGION_SIZE);
+    const regionZ = Math.floor(baseZ / REGION_SIZE);
+    const context = this._megaContext();
 
     for (let rz = regionZ - 1; rz <= regionZ + 1; rz++) {
       for (let rx = regionX - 1; rx <= regionX + 1; rx++) {

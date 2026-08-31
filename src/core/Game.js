@@ -38,6 +38,13 @@ registerBlockItems();
 const AUTOSAVE_INTERVAL = 90;
 const OTHER_DIMENSION = { overworld: 'ember_expanse', ember_expanse: 'overworld' };
 
+// The Cinder Warden's lair. He wakes when the player reaches the Emberforge,
+// and the forge is announced from further out so walking toward the smoke is
+// a decision rather than an ambush.
+const BOSS_WAKE_DISTANCE = 34;
+const BOSS_HINT_DISTANCE = 110;
+const BOSS_WATCH_INTERVAL = 1; // seconds between checks; nothing here changes per frame
+
 /**
  * Owns the whole in-game session: scene/renderer, world, player, all
  * gameplay systems, and the coordination of which UI panel (if any) is
@@ -231,6 +238,7 @@ export class Game {
     this.renderer.setClearColor(this.dayNight.sky.bottom);
 
     this._updateEmberlight();
+    this._updateBossWatch(dt);
     this.hud.update(this.world, this.dayNight, this.interaction, this.entities.boss);
     this.debugRenderer.update(this.world, this.entities, this.player);
     this.debugOverlay.trackFrame(dt);
@@ -426,13 +434,76 @@ export class Game {
     globalEvents.emit('ui:toast', `You step into ${this.world.dimension.displayName}.`);
     this._ensureReturnPortal(x, z);
 
-    if (nextId === 'ember_expanse' && !this.entities.bossAlive && this.player.level >= 5 && Math.random() < 0.5) {
-      const angle = Math.random() * Math.PI * 2;
-      const bx = x + Math.cos(angle) * 18, bz = z + Math.sin(angle) * 18;
-      const by = this.world.heightAtWorld(Math.floor(bx), Math.floor(bz)) + 1;
-      this.entities.spawnMob('cinder_warden', { x: bx, y: by, z: bz });
-      globalEvents.emit('ui:toast', 'You sense a monstrous presence nearby...');
+    if (nextId === 'ember_expanse' && !this.bossDefeated) {
+      const lair = this.world.generator.megaStructureNear?.(x, z);
+      if (lair) {
+        globalEvents.emit('ui:toast', 'Smoke rises from a great forge somewhere out there.');
+      }
     }
+  }
+
+  /**
+   * The Cinder Warden guards the Emberforge. He used to appear on a coin
+   * flip as you arrived, eighteen blocks away in a random direction, which
+   * meant there was no way to go looking for him — you re-entered the portal
+   * until the dice landed. Now he has a lair: the Ember Expanse's landmark,
+   * which is visible from a long way off, so "how do I find him" has an
+   * answer. He wakes when you come close and stays awake until one of you
+   * falls.
+   */
+  _updateBossWatch(dt) {
+    if (this.bossDefeated || this.entities.bossAlive) return;
+    if (this.world.dimensionId !== 'ember_expanse') return;
+
+    // Landmark placement is cheap but not free, and nothing about it changes
+    // between frames.
+    this._bossWatchTimer = (this._bossWatchTimer ?? 0) - dt;
+    if (this._bossWatchTimer > 0) return;
+    this._bossWatchTimer = BOSS_WATCH_INTERVAL;
+
+    const px = this.player.position.x, pz = this.player.position.z;
+    const lair = this.world.generator.megaStructureNear?.(px, pz);
+    if (!lair) return;
+    const distance = Math.hypot(lair.x - px, lair.z - pz);
+
+    if (distance > BOSS_WAKE_DISTANCE) {
+      // One warning, the first time the forge comes within reach.
+      if (distance < BOSS_HINT_DISTANCE && !this._bossHinted) {
+        this._bossHinted = true;
+        globalEvents.emit('ui:toast', 'The forge ahead is not abandoned. Something is still tending it.');
+      }
+      return;
+    }
+
+    const spot = this._findLairSpawn(lair);
+    if (!spot) return; // the forge's chunks are not loaded yet; try again shortly
+    this.entities.spawnMob('cinder_warden', spot);
+    globalEvents.emit('ui:toast', 'The Cinder Warden rises from the forge floor.');
+  }
+
+  /**
+   * Somewhere in the forge yard the Warden can actually stand: solid ground
+   * that is not magma, with room above. Probed against the loaded world
+   * rather than assumed from the blueprint, so an eroded or player-altered
+   * forge still works.
+   */
+  _findLairSpawn(lair) {
+    const magmaId = BlockRegistry.idOf('magma');
+    for (let radius = 6; radius <= 11; radius++) {
+      for (let step = 0; step < 12; step++) {
+        const angle = (step / 12) * Math.PI * 2;
+        const x = Math.round(lair.x + Math.cos(angle) * radius);
+        const z = Math.round(lair.z + Math.sin(angle) * radius);
+        const ground = this.world.heightAtWorld(x, z);
+        if (ground < 1) continue; // chunk not loaded, or nothing there
+        const floor = this.world.getBlockGlobal(x, ground, z);
+        if (floor === 0 || floor === magmaId) continue;
+        if (this.world.getBlockGlobal(x, ground + 1, z) !== 0) continue;
+        if (this.world.getBlockGlobal(x, ground + 2, z) !== 0) continue;
+        return { x: x + 0.5, y: ground + 1, z: z + 0.5 };
+      }
+    }
+    return null;
   }
 
   /**
