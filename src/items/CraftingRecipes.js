@@ -49,7 +49,13 @@ export const RECIPES = [
   // Deliberately free of Infusion Dust: dust needs Sulfur, and the Riftstone
   // is the only way into the Ember Expanse, so requiring it here made the
   // portal — and the rest of the game — unreachable.
-  shapeless('riftstone', [{ id: 'voidshard', count: 4 }, { id: 'glimmer_shard', count: 4 }, { id: 'glint_ingot', count: 2 }], { id: 'riftstone', count: 1 }),
+  //
+  // A shapeless `count` is a number of grid CELLS, not a stack size — one
+  // item per cell. This asked for 4 + 4 + 2 = ten of them, and even a
+  // Workbench only has nine, so the Riftstone could not be crafted at all
+  // and the Ember Expanse was sealed off. It now fills the Workbench
+  // exactly. tests/crafting.test.js keeps every recipe inside the grid.
+  shapeless('riftstone', [{ id: 'voidshard', count: 4 }, { id: 'glimmer_shard', count: 3 }, { id: 'glint_ingot', count: 2 }], { id: 'riftstone', count: 1 }),
 
   // --- Farming ---
   shapeless('baked_loaf', [{ id: 'barley_grain', count: 3 }], { id: 'baked_loaf', count: 1, needsSmelter: true }),

@@ -1,7 +1,7 @@
 import { ItemRegistry, itemDurability } from '../items/ItemRegistry.js';
 import { EQUIP_SLOTS, HOTBAR_SIZE, insertIntoSlots } from '../items/Inventory.js';
 import { matchRecipe, consumeGridForCraft } from '../items/CraftingSystem.js';
-import { RECIPES } from '../items/CraftingRecipes.js';
+import { RECIPES, matchesIngredient } from '../items/CraftingRecipes.js';
 import { renderSlotContent, attachTooltip, hideTooltip, makeSlotEl, bindSlotClicks } from './slotHelpers.js';
 import { getItemIconCanvas } from '../render/ItemIcons.js';
 import { globalEvents } from '../core/EventBus.js';
@@ -370,23 +370,49 @@ export class InventoryScreen {
     return false;
   }
 
+  /**
+   * Which of the nine grid cells the player can actually reach right now.
+   * The grid is always a flat 9, but a 2x2 crafting square only uses its
+   * top-left corner — cells 0, 1, 3, 4, not 0 to 3.
+   */
+  _craftCells() {
+    const cells = [];
+    for (let i = 0; i < 9; i++) {
+      if ((i % 3) < this.craftSize && Math.floor(i / 3) < this.craftSize) cells.push(i);
+    }
+    return cells;
+  }
+
   _tryQuickFill(recipe) {
     // Convenience: attempt to move matching ingredients from the main
     // inventory into the crafting grid so the player doesn't hand-place them.
     if (recipe.type !== 'shapeless') return;
+    const cells = this._craftCells();
+    // A shapeless ingredient count is a number of cells, one item each, so a
+    // recipe can simply be too big for the square in front of the player.
+    // Say so rather than half-filling the grid and leaving them to wonder.
+    const needed = recipe.ingredients.reduce((sum, ing) => sum + (ing.count ?? 1), 0);
+    if (needed > cells.length) {
+      globalEvents.emit('ui:toast', this.craftSize < 3
+        ? `${ItemRegistry.get(recipe.result.id)?.displayName ?? 'That'} needs a Workbench — it does not fit here.`
+        : `${ItemRegistry.get(recipe.result.id)?.displayName ?? 'That'} needs ${needed} slots, more than the grid has.`);
+      return;
+    }
+
     for (const ing of recipe.ingredients) {
       let need = ing.count ?? 1;
       for (let i = 0; i < this.inv.slots.length && need > 0; i++) {
         const s = this.inv.slots[i];
         if (!s) continue;
-        const matches = ing.id ? s.id === ing.id : (ing.tag && s.id.endsWith(`_${ing.tag}`));
-        if (!matches) continue;
-        for (let g = 0; g < this.craftSize * this.craftSize && need > 0; g++) {
+        // The same test the recipe matcher uses. Rolling a second one here by
+        // hand is how the Bedroll's cloth stopped being recognised.
+        if (!matchesIngredient(s.id, ing)) continue;
+        for (const g of cells) {
+          if (need <= 0) break;
           if (this.inv.craftingGrid[g]) continue;
-          const take = Math.min(1, s.count, need);
-          this.inv.craftingGrid[g] = { id: s.id, count: take };
-          s.count -= take; need -= take;
-          if (s.count <= 0) this.inv.slots[i] = null;
+          this.inv.craftingGrid[g] = { id: s.id, count: 1 }; // one item per cell
+          s.count -= 1; need -= 1;
+          if (s.count <= 0) { this.inv.slots[i] = null; break; }
         }
       }
     }
