@@ -24,9 +24,13 @@ export class HUD {
       <div class="interact-hint interactive" id="hud-hint" style="display:none;"></div>
       <div class="toast-log" id="hud-toasts"></div>
       <div class="hud-dock">
-        <div class="armor-row" id="hud-armor"></div>
-        <div class="hearts-row" id="hud-hearts"></div>
-        <div class="hunger-row" id="hud-hunger"></div>
+        <div class="vitals">
+          <div class="armor-row" id="hud-armor"></div>
+          <div class="vitals-main">
+            <div class="hearts-row" id="hud-hearts"></div>
+            <div class="hunger-row" id="hud-hunger"></div>
+          </div>
+        </div>
         <div class="hotbar" id="hud-hotbar"></div>
       </div>
     `;
@@ -76,6 +80,54 @@ export class HUD {
   }
 
   /**
+   * Health, hunger and armour. Rebuilt only when one of the values it shows
+   * actually moves — at sixty frames a second, throwing away and re-parsing
+   * thirty icons' worth of markup for an unchanged bar is pure waste.
+   */
+  _renderVitals(p, armorPoints) {
+    const signature = `${Math.ceil(p.health)}/${p.maxHealth}|${Math.ceil(p.hunger)}/${p.maxHunger}|${armorPoints}`;
+    if (signature === this._vitalsSignature) return;
+    this._vitalsSignature = signature;
+
+    const hearts = this.el.querySelector('#hud-hearts');
+    let heartsHtml = '';
+    for (let i = 0; i < Math.ceil(p.maxHealth / 2); i++) {
+      const filled = p.health >= (i + 1) * 2;
+      const half = !filled && p.health > i * 2;
+      heartsHtml += heartIconMarkup(filled ? 'full' : half ? 'half' : 'empty');
+    }
+    // The exact number, in front of the icons rather than behind them, so the
+    // two rows stay anchored to the outer edges of the band.
+    hearts.innerHTML = `<span class="bar-value">${Math.ceil(p.health)}/${p.maxHealth}</span>` + heartsHtml;
+    // Under 30% the remaining hearts beat (see main.css).
+    hearts.classList.toggle('low', p.health > 0 && p.health <= p.maxHealth * 0.3);
+
+    const hunger = this.el.querySelector('#hud-hunger');
+    let hungerHtml = '';
+    for (let i = 0; i < Math.ceil(p.maxHunger / 2); i++) {
+      const filled = p.hunger >= (i + 1) * 2;
+      const half = !filled && p.hunger > i * 2;
+      hungerHtml += drumstickIconMarkup(filled ? 'full' : half ? 'half' : 'empty');
+    }
+    hunger.innerHTML = hungerHtml + `<span class="bar-value after">${Math.ceil(p.hunger)}/${p.maxHunger}</span>`;
+
+    // Armour sits above the other two, one shield per two points, and is not
+    // there at all when nothing is worn.
+    const armorRow = this.el.querySelector('#hud-armor');
+    if (armorPoints <= 0) {
+      armorRow.innerHTML = '';
+      armorRow.style.display = 'none';
+      return;
+    }
+    armorRow.style.display = '';
+    let armorHtml = '';
+    for (let i = 0; i < Math.ceil(armorPoints / 2); i++) {
+      armorHtml += shieldIconMarkup(armorPoints >= (i + 1) * 2 ? 'full' : 'half');
+    }
+    armorRow.innerHTML = `<span class="bar-value">${armorPoints}</span>` + armorHtml;
+  }
+
+  /**
    * A standing signpost for the one place the player currently needs to
    * reach. The Ember Expanse fogs out at 90 blocks and the Emberforge is
    * usually further off than that, so without a bearing there is nothing to
@@ -99,45 +151,10 @@ export class HUD {
 
   update(world, dayNight, interaction, boss = null, objective = null) {
     const p = this.player;
-    const hearts = this.el.querySelector('#hud-hearts');
-    const hunger = this.el.querySelector('#hud-hunger');
-    const heartCount = Math.ceil(p.maxHealth / 2);
-    let heartsHtml = '';
-    for (let i = 0; i < heartCount; i++) {
-      const filled = p.health >= (i + 1) * 2;
-      const half = !filled && p.health > i * 2;
-      heartsHtml += heartIconMarkup(filled ? 'full' : half ? 'half' : 'empty');
-    }
-    // The exact number, to the left of the hearts: half a heart is hard to
-    // judge at a glance. It goes in front rather than behind because the
-    // hunger row grows in from the right and the two would collide.
-    hearts.innerHTML = `<span class="bar-value">${Math.ceil(p.health)}/${p.maxHealth}</span>` + heartsHtml;
-
-    // Armor sits above the hearts, one shield per two points of defense,
-    // and disappears entirely when nothing is worn.
-    const armorRow = this.el.querySelector('#hud-armor');
     const { defense, toughness } = p.inventory.totalDefense();
-    const armorPoints = defense + toughness;
-    if (armorPoints <= 0) {
-      armorRow.innerHTML = '';
-      armorRow.style.display = 'none';
-    } else {
-      armorRow.style.display = '';
-      const shields = Math.ceil(armorPoints / 2);
-      let armorHtml = '';
-      for (let i = 0; i < shields; i++) {
-        armorHtml += shieldIconMarkup(armorPoints >= (i + 1) * 2 ? 'full' : 'half');
-      }
-      armorRow.innerHTML = `<span class="bar-value">${armorPoints}</span>` + armorHtml;
-    }
-
-    const hungerCount = Math.ceil(p.maxHunger / 2);
-    let hungerHtml = '';
-    for (let i = 0; i < hungerCount; i++) {
-      const filled = p.hunger >= (i + 1) * 2;
-      hungerHtml += drumstickIconMarkup(filled ? 'full' : 'empty');
-    }
-    hunger.innerHTML = hungerHtml;
+    // These rows are a few hundred elements between them and change only when
+    // a number does, so they are rebuilt on change rather than every frame.
+    this._renderVitals(p, defense + toughness);
 
     if (this._lastSelected !== p.inventory.selectedHotbar) {
       this._lastSelected = p.inventory.selectedHotbar;
