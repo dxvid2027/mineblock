@@ -22,7 +22,10 @@ class ItemRegistryClass {
       fuel: def.fuel ?? 0, // burn ticks in the Smelter
       equipSlot: def.equipSlot ?? null, // 'amulet' etc for non-armor equipables
       shield: def.shield ?? null, // { block, durability } — held in the offhand
-      totem: def.totem ?? null // { reviveHealth } — spent to survive a killing blow
+      totem: def.totem ?? null, // { reviveHealth } — spent to survive a killing blow
+      // Standing powers granted while worn in the amulet slot, e.g.
+      // { ward: 0.25 } or { haste: 0.2, swiftness: 0.3 }. See Inventory.amuletPower.
+      amulet: def.amulet ?? null
     };
     this._byId.set(def.id, item);
     return item;

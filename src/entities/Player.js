@@ -70,6 +70,10 @@ export class Player extends Entity {
     // environmental source in the game passes ignoreInvuln, and a creature's
     // attack is the only thing that does not, so that flag is the line.
     if (!opts?.ignoreInvuln) reduced = this._absorbWithShield(reduced);
+    // The Warding Amulet turns aside part of whatever is left, so it stays
+    // worth wearing against big hits that armour barely dents. It works on
+    // falls and magma too — it wards harm, not weapons.
+    reduced *= 1 - this.inventory.amuletPower('ward');
 
     // A killing blow is the totem's cue. Checked before the damage lands, so
     // the player never sees the death screen flash past first.

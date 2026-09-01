@@ -113,6 +113,17 @@ export class Inventory {
     globalEvents.emit('inventory:changed');
   }
 
+  /**
+   * A standing power granted by whatever is in the amulet slot, or 0.
+   * One lookup rather than five, so a new amulet only has to declare its
+   * numbers and every system that cares picks them up.
+   */
+  amuletPower(name) {
+    const worn = this.equipment.amulet;
+    if (!worn) return 0;
+    return ItemRegistry.get(worn.id)?.amulet?.[name] ?? 0;
+  }
+
   totalDefense() {
     let defense = 0, toughness = 0;
     for (const slot of Object.keys(this.equipment)) {

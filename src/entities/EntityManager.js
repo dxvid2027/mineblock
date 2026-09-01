@@ -281,7 +281,9 @@ export class EntityManager {
 
     best.damage(damage);
     best.velocity.x += knockback.x; best.velocity.y += 3; best.velocity.z += knockback.z;
-    this._attackCooldown = heldItem?.tool?.type === 'sword' ? ATTACK_COOLDOWN_BASE * 0.7 : ATTACK_COOLDOWN_BASE;
+    const swing = heldItem?.tool?.type === 'sword' ? ATTACK_COOLDOWN_BASE * 0.7 : ATTACK_COOLDOWN_BASE;
+    // ...and the swing, the other half of what the Vigor Amulet promises.
+    this._attackCooldown = swing / (1 + player.inventory.amuletPower('swiftness'));
     if (!best.alive) player.addXp(best.species.xp ?? 2);
   }
 

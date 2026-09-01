@@ -155,8 +155,15 @@ ItemRegistry.register({ id: 'cooked_meat', displayName: 'Cooked Meat', category:
 // ---------------------------------------------------------------------- //
 ItemRegistry.register({ id: 'infusion_dust', displayName: 'Infusion Dust', category: 'magic', description: 'Glittering dust used to power the Runeforge.', texture: icon('dust', '#a35bff') });
 ItemRegistry.register({ id: 'rune_shard', displayName: 'Rune Shard', category: 'magic', description: 'A shard etched with a faint sigil. Consumed to apply an Infusion.', texture: icon('shard', '#7d3fe0') });
-ItemRegistry.register({ id: 'warding_amulet', displayName: 'Warding Amulet', category: 'magic', description: 'Worn around the neck; wards off a portion of incoming harm.', stackSize: 1, texture: icon('amulet', '#8fe9e0'), equipSlot: 'amulet', armor: { slot: 'amulet', defense: 2, toughness: 1, durability: 400 } });
-ItemRegistry.register({ id: 'vigor_amulet', displayName: 'Vigor Amulet', category: 'magic', description: 'Worn around the neck; quickens the wearer’s step and swing.', stackSize: 1, texture: icon('amulet', '#e8cf4f'), equipSlot: 'amulet', armor: { slot: 'amulet', defense: 0, toughness: 0, durability: 400 } });
+// The two amulets. Both used to be armour with a flavour line: the Warding
+// Amulet was two points of defense, indistinguishable from a scrap of plate,
+// and the Vigor Amulet promised a quicker step and swing while granting
+// literally nothing — no code anywhere read it. They now carry standing
+// powers (see Inventory.amuletPower) and their descriptions state the
+// numbers, because an effect the player cannot see is one they cannot plan
+// around.
+ItemRegistry.register({ id: 'warding_amulet', displayName: 'Warding Amulet', category: 'magic', description: 'Worn around the neck. +2 defense, and turns aside a further 25% of every blow that gets through.', stackSize: 1, texture: icon('amulet', '#8fe9e0'), equipSlot: 'amulet', armor: { slot: 'amulet', defense: 2, toughness: 1, durability: 400 }, amulet: { ward: 0.25 } });
+ItemRegistry.register({ id: 'vigor_amulet', displayName: 'Vigor Amulet', category: 'magic', description: 'Worn around the neck. Moves you 20% faster and lets you swing 30% quicker.', stackSize: 1, texture: icon('amulet', '#e8cf4f'), equipSlot: 'amulet', armor: { slot: 'amulet', defense: 0, toughness: 0, durability: 400 }, amulet: { haste: 0.20, swiftness: 0.30 } });
 ItemRegistry.register({ id: 'elixir_of_mending', displayName: 'Elixir of Mending', category: 'magic', description: 'A bottled brew that knits wounds shut.', texture: icon('potion', '#6fc274'), food: { hunger: 0, saturation: 0, heal: 6 } });
 ItemRegistry.register({ id: 'elixir_of_haste', displayName: 'Elixir of Haste', category: 'magic', description: 'A bottled brew that quickens the drinker.', texture: icon('potion', '#e8a33d') });
 ItemRegistry.register({ id: 'warden_core', displayName: 'Warden Core', category: 'magic', description: 'The molten heart of the Cinder Warden. The ultimate Infusion catalyst.', texture: icon('gem', '#ff6a2f') });

@@ -47,6 +47,11 @@ export class PlayerController {
     } else {
       speed *= 1 + getInfusionLevel(boots, 'windward') * 0.08;
     }
+    // The Vigor Amulet quickens the step, as its description has always
+    // claimed and as nothing in the game previously did. Applied after the
+    // water branch, which replaces `speed` outright, so it counts when
+    // swimming too.
+    speed *= 1 + this.player.inventory.amuletPower('haste');
     speed *= this.speedMultiplier;
 
     const yaw = this.player.yaw;
