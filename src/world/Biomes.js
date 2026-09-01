@@ -91,5 +91,42 @@ export const EMBER_BIOMES = {
   }
 };
 
+// The Eternal Rift. Three biomes, all of them variations on the same idea:
+// a place that was inhabited a very long time ago and is not any more. There
+// is no sun and no sea; the light comes out of the ground.
+export const RIFT_BIOMES = {
+  barrens: {
+    id: 'barrens', displayName: 'The Pale Barrens',
+    baseHeight: 46, heightVariance: 9,
+    surface: 'pale_turf', subsurface: 'rift_shale', subsurfaceDepth: 4,
+    treeType: 'riftwood', treeDensity: 0.006,
+    plants: ['gloomfern', 'voidbloom'], plantDensity: 0.05,
+    weather: ['clear'],
+    mobs: ['riftstalker', 'hollow_one'],
+    fogColor: 0x2b2740
+  },
+  crystal_hollows: {
+    id: 'crystal_hollows', displayName: 'The Crystal Hollows',
+    baseHeight: 42, heightVariance: 16,
+    surface: 'ashen_silt', subsurface: 'voidstone', subsurfaceDepth: 5,
+    treeType: null, treeDensity: 0,
+    plants: ['voidbloom'], plantDensity: 0.04,
+    weather: ['clear'],
+    mobs: ['shardling', 'riftstalker'],
+    fogColor: 0x1f2b3f
+  },
+  sunken_causeway: {
+    id: 'sunken_causeway', displayName: 'The Sunken Causeway',
+    baseHeight: 38, heightVariance: 5,
+    surface: 'voidstone', subsurface: 'voidstone', subsurfaceDepth: 6,
+    treeType: null, treeDensity: 0,
+    plants: ['gloomfern'], plantDensity: 0.02,
+    weather: ['clear'],
+    mobs: ['hollow_one', 'shardling'],
+    fogColor: 0x241f36
+  }
+};
+
 export function biomeList() { return Object.values(BIOMES); }
 export function emberBiomeList() { return Object.values(EMBER_BIOMES); }
+export function riftBiomeList() { return Object.values(RIFT_BIOMES); }

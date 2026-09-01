@@ -197,7 +197,7 @@ export class EntityManager {
   _updateMobs(dt, player, camera) {
     for (let i = this.mobs.length - 1; i >= 0; i--) {
       const mob = this.mobs[i];
-      mob.update(dt, this.world, player);
+      mob.update(dt, this.world, player, this);
       if (mob.healthBar && camera) updateHealthBar(mob.healthBar, mob, camera, HEALTH_BAR_DISTANCE);
       const dist = mob.distanceTo(player.position);
       if (!mob.alive) {
@@ -221,7 +221,11 @@ export class EntityManager {
     this.group.remove(mob.mesh);
     disposeMobMesh(mob.mesh);
     this.mobs.splice(index, 1);
-    if (mob.species.boss) { this.bossAlive = false; this.boss = null; }
+    if (mob.species.boss) {
+      mob.boss?.dismiss(); // the escort does not outlive what called it up
+      this.bossAlive = false;
+      this.boss = null;
+    }
     globalEvents.emit('entity:mobKilled', mob.species);
   }
 

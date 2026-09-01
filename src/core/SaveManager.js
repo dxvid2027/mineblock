@@ -60,6 +60,10 @@ export const SaveManager = {
       seed: game.world.seed,
       playedTime: game.playedTime,
       bossDefeated: !!game.bossDefeated,
+      // Per-guardian, so the Spire Sentinel and the Cinder Warden stay dead
+      // independently of each other and of the ending.
+      defeated: { ...(game.defeated ?? {}) },
+      riftAttuned: !!game.riftAttuned,
       ...game.dayNight.serialize(), // { time, day }
       player: game.player.serialize(),
       chunkDiffs: game.world.serializeAllDimensions()

@@ -34,6 +34,16 @@ export class SurvivalSystem {
       if (this._regenTimer >= 2.5) { this._regenTimer = 0; player.heal(1); player.saturation = Math.max(0, player.saturation - 0.5); }
     }
 
+    // Titanite mends what it armours, and the Eternal Sigil mends its wearer.
+    // Both work while starving and while hurt, which is the whole point of
+    // them — this is the reward for reaching the end of the Rift, so it is
+    // deliberately something no amount of food can substitute for.
+    const mending = player.inventory.titaniteMending() + player.inventory.amuletPower('mending');
+    if (mending > 0 && player.health < player.maxHealth) {
+      this._mendTimer = (this._mendTimer ?? 0) + dt * mending;
+      if (this._mendTimer >= 1) { this._mendTimer = 0; player.heal(1); }
+    }
+
     // --- fall damage ---
     if (!player.onGround && this._wasOnGround) {
       this._fallStartY = player.position.y;

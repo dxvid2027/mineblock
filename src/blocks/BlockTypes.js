@@ -355,4 +355,107 @@ export const CINDER_LOG = reg({
   }
 });
 
+// ---------------------------------------------------------------------- //
+// The Eternal Rift
+//
+// The oldest place in the world and the last one the player reaches. Its
+// palette is deliberately cold against the Ember Expanse's heat: bruised
+// violet stone, bone-pale growth, and crystal that lights itself. Nothing
+// here grows the way things grow in the Overworld — the vegetation is
+// mineral, and the ruins were built by someone long gone.
+// ---------------------------------------------------------------------- //
+export const VOIDSTONE = reg({
+  name: 'voidstone', displayName: 'Voidstone', category: 'terrain', hardness: 3.2, toolType: 'pickaxe', minToolTier: 2,
+  drops: 'voidstone',
+  texture: { all: T('speckle', '#2b2740', { grain: '#413a5e' }) }
+});
+export const RIFT_SHALE = reg({
+  name: 'rift_shale', displayName: 'Rift Shale', category: 'terrain', hardness: 1.4, toolType: 'shovel',
+  texture: { all: T('grain', '#3a3352', { grain: '#4c4370' }) }
+});
+export const PALE_TURF = reg({
+  name: 'pale_turf', displayName: 'Pale Turf', category: 'terrain', hardness: 0.7, toolType: 'shovel',
+  drops: 'rift_shale',
+  // Muted, not white: at the game's 0.8 minimum light a pale surface reads as
+  // snow, and the Rift is supposed to feel old and unlit rather than bright.
+  texture: {
+    top: T('grain', '#6b6390', { grain: '#7e75a6' }),
+    bottom: T('grain', '#3a3352', { grain: '#4c4370' }),
+    side: T('grassSide', '#3a3352', { top: '#6b6390', grain: '#4c4370' })
+  }
+});
+export const ASHEN_SILT = reg({
+  name: 'ashen_silt', displayName: 'Ashen Silt', category: 'terrain', hardness: 0.5, toolType: 'shovel',
+  texture: { all: T('grain', '#544c6d', { grain: '#655c82' }) }
+});
+export const AETHER_CRYSTAL = reg({
+  name: 'aether_crystal', displayName: 'Aether Crystal', category: 'terrain', hardness: 2.4, toolType: 'pickaxe', minToolTier: 3,
+  drops: 'aether_dust', dropCount: [1, 3], lightEmission: 10,
+  texture: { all: T('ore', '#2f2a4a', { grain: '#6fe8ff' }) }
+});
+// Rarer than every other ore in the game by a wide margin, and it only ever
+// occurs here. See tests/rift.test.js, which pins that ordering down.
+export const TITANITE_ORE = reg({
+  name: 'titanite_ore', displayName: 'Titanite Ore', category: 'ore', hardness: 7, toolType: 'pickaxe', minToolTier: 5,
+  drops: 'titanite_chunk', dropCount: [1, 1], lightEmission: 7,
+  texture: { all: T('ore', '#251f38', { grain: '#ffd98a' }) }
+});
+export const RIFTWOOD_LOG = reg({
+  name: 'riftwood_log', displayName: 'Riftwood Log', category: 'wood', hardness: 1.6, toolType: 'axe',
+  texture: {
+    top: T('rings', '#37304e', { grain: '#8d7fc0' }),
+    bottom: T('rings', '#37304e', { grain: '#8d7fc0' }),
+    side: T('bark', '#37304e', { grain: '#8d7fc0' })
+  }
+});
+export const RIFTWOOD_LEAVES = reg({
+  name: 'riftwood_leaves', displayName: 'Riftwood Canopy', category: 'flora', hardness: 0.3, toolType: 'none',
+  // Deliberately unlit: canopy is the most numerous block on a Riftwood and
+  // every emitter is a flood the world has to run.
+  transparent: true, drops: null,
+  texture: { all: T('leafy', '#4b3f7a', { grain: '#7d6fc4' }) }
+});
+export const GLOOMFERN = reg({
+  name: 'gloomfern', displayName: 'Gloomfern', category: 'flora', hardness: 0, toolType: 'none',
+  solid: false, transparent: true, plant: true, drops: 'fiber',
+  texture: { all: T('sprig', '#6c5f9c', { grain: '#4a3f72' }) }
+});
+export const VOIDBLOOM = reg({
+  name: 'voidbloom', displayName: 'Voidbloom', category: 'flora', hardness: 0, toolType: 'none',
+  solid: false, transparent: true, plant: true, lightEmission: 8,
+  texture: { all: T('flower', '#8f7fd8', { grain: '#d9c6ff' }) }
+});
+export const RUNED_BASALT = reg({
+  name: 'runed_basalt', displayName: 'Runed Basalt', category: 'decorative', hardness: 3, toolType: 'pickaxe', minToolTier: 2,
+  lightEmission: 4,
+  texture: { all: T('runic', '#292440', { grain: '#7fe6d8' }) }
+});
+export const RIFT_BRICK = reg({
+  name: 'rift_brick', displayName: 'Rift Brick', category: 'decorative', hardness: 2.6, toolType: 'pickaxe', minToolTier: 1,
+  texture: { all: T('brick', '#4a4270', { grain: '#332d52' }) }
+});
+export const PALE_MARBLE = reg({
+  name: 'pale_marble', displayName: 'Pale Marble', category: 'decorative', hardness: 2.2, toolType: 'pickaxe', minToolTier: 1,
+  texture: { all: T('speckle', '#c9c2da', { grain: '#a89fc0' }) }
+});
+export const VOID_GLASS = reg({
+  name: 'void_glass', displayName: 'Void Glass', category: 'decorative', hardness: 0.4, toolType: 'none',
+  transparent: true, drops: null,
+  texture: { all: T('glass', '#6a5fa8', { grain: '#c4b8ff' }) }
+});
+// Placed by the player and right-clicked, like the Riftstone. It is the only
+// way into the Eternal Rift and cannot be crafted without both artifacts.
+export const RIFT_GATE = reg({
+  name: 'rift_gate', displayName: 'Rift Gate', category: 'functional', hardness: 12, toolType: 'pickaxe', minToolTier: 4,
+  lightEmission: 14, interactive: 'riftGate',
+  texture: { all: T('runic', '#1f1b33', { grain: '#c39bff' }) }
+});
+// Proof, and nothing else. Placed in a base it is the one block in the game
+// that cannot be obtained any other way.
+export const TITAN_TROPHY = reg({
+  name: 'titan_trophy', displayName: 'Trophy of the Eternal Titan', category: 'functional', hardness: 6, toolType: 'pickaxe', minToolTier: 3,
+  lightEmission: 15,
+  texture: { all: T('runic', '#3a2f14', { grain: '#ffd98a' }) }
+});
+
 export const ALL_BLOCKS = BlockRegistry.all();

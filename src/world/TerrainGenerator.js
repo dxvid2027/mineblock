@@ -42,6 +42,19 @@ const ORE_VEINS = [
   // (the Expanse remains the plentiful source).
   { block: 'sulfur_crystal', minY: 5, maxY: 18, chance: 0.004, size: [2, 4] }
 ];
+// The Eternal Rift. Titanite is deliberately the rarest thing in the game:
+// half the chance of Voidshard, the previous floor, and in a band half as
+// tall. tests/rift.test.js counts real chunks and pins that ordering down.
+const RIFT_ORE_VEINS = [
+  // Aether Crystal lights the Rift's caves, so it is common — but every one
+  // of these is a light source the world has to flood from, and at the first
+  // numbers tried (0.014 / 3-7 per vein) a chunk held 516 of them. Measured
+  // back down to something a cave can still be lit by.
+  { block: 'aether_crystal', minY: 5, maxY: 70, chance: 0.0045, size: [2, 5] },
+  { block: 'sulfur_crystal', minY: 5, maxY: 50, chance: 0.0025, size: [2, 4] },
+  { block: 'voidshard_ore', minY: 5, maxY: 40, chance: 0.004, size: [1, 3] },
+  { block: 'titanite_ore', minY: 5, maxY: 26, chance: 0.00025, size: [1, 2] }
+];
 const EMBER_ORE_VEINS = [
   { block: 'sulfur_crystal', minY: 5, maxY: 60, chance: 0.02, size: [3, 7] },
   { block: 'voidshard_ore', minY: 5, maxY: 30, chance: 0.003, size: [1, 3] }
@@ -52,16 +65,36 @@ function mulberrySeed(seed, salt) {
 }
 
 export class TerrainGenerator {
-  constructor(seed, { biomes, biomeIds, oreVeins, seaLevel = SEA_LEVEL, liquidBlock = 'water', isEmber = false, dimensionId = 'overworld' }) {
+  constructor(seed, {
+    biomes, biomeIds, oreVeins, seaLevel = SEA_LEVEL, liquidBlock = 'water',
+    isEmber = false, isRift = false, dimensionId = 'overworld',
+    stoneBlock = null, floodMaxY = null, caveFlora = null, floatingIslands = null
+  }) {
     this.seed = seed;
     this.dimensionId = dimensionId;
     this.structures = structuresFor(dimensionId);
     this.biomes = biomes;
     this.biomeIds = biomeIds;
-    this.oreVeins = oreVeins ?? (isEmber ? EMBER_ORE_VEINS : ORE_VEINS);
+    this.oreVeins = oreVeins ?? (isRift ? RIFT_ORE_VEINS : isEmber ? EMBER_ORE_VEINS : ORE_VEINS);
     this.seaLevel = seaLevel;
     this.liquidBlock = liquidBlock;
     this.isEmber = isEmber;
+    this.isRift = isRift;
+
+    // What a dimension is made of, stated rather than derived from a boolean.
+    // Adding a third world to an `isEmber ? a : b` switch is how the second
+    // one's quirks leak into the third.
+    this.stoneBlock = stoneBlock ?? (isEmber ? 'ashstone' : 'stone');
+    // Everything above the terrain up to here fills with the dimension's
+    // liquid: the Overworld's sea, the Ember Expanse's magma basins. The Rift
+    // has neither, and passes 0.
+    this.floodMaxY = floodMaxY ?? (isEmber ? 24 : seaLevel);
+    this.caveFlora = caveFlora ?? (isEmber
+      ? { floor: ['cinderbloom'], ceiling: [] }
+      : { floor: ['glowcap', 'duskcap', 'cavefern'], ceiling: ['dripvine'] });
+    // { minY, maxY, threshold } — a band of 3D noise above the terrain that
+    // becomes floating land. Only the Rift uses it.
+    this.floatingIslands = floatingIslands;
 
     this.heightNoise = new Noise(mulberrySeed(seed, 1));
     this.tempNoise = new Noise(mulberrySeed(seed, 2));
@@ -70,9 +103,19 @@ export class TerrainGenerator {
     this.detailNoise = new Noise(mulberrySeed(seed, 5));
     this.caveNoise2 = new Noise(mulberrySeed(seed, 6));
     this.cavernNoise = new Noise(mulberrySeed(seed, 7));
+    this.islandNoise = new Noise(mulberrySeed(seed, 8));
   }
 
   pickBiome(wx, wz) {
+    if (this.isRift) {
+      // Two independent fields rather than one, so the Hollows form pockets
+      // inside the Barrens instead of banding across the whole dimension.
+      const a = this.tempNoise.fbm2D(wx * 0.0032, wz * 0.0032, { octaves: 3 });
+      const b = this.moistNoise.fbm2D(wz * 0.0032 + 900, wx * 0.0032 + 900, { octaves: 3 });
+      if (a > 0.28) return this.biomes.crystal_hollows;
+      if (b < -0.3) return this.biomes.sunken_causeway;
+      return this.biomes.barrens;
+    }
     if (this.isEmber) {
       // Single warped noise picks between the two Ember biomes.
       const n = this.tempNoise.fbm2D(wx * 0.004, wz * 0.004, { octaves: 3 });
@@ -169,7 +212,7 @@ export class TerrainGenerator {
     const baseZ = chunk.cz * CHUNK_SIZE_Z;
     const airId = 0;
     const liquidId = BlockRegistry.idOf(this.liquidBlock);
-    const stoneId = BlockRegistry.idOf(this.isEmber ? 'ashstone' : 'stone');
+    const stoneId = BlockRegistry.idOf(this.stoneBlock);
     const worldrootId = BlockRegistry.idOf('worldroot');
 
     for (let lz = 0; lz < CHUNK_SIZE_Z; lz++) {
@@ -199,8 +242,7 @@ export class TerrainGenerator {
           else if (y < crustBottom) id = stoneId;
           else if (y < height) id = subsurfaceId;
           else if (y === height) id = surfaceId;
-          else if (y <= this.seaLevel && !this.isEmber) id = liquidId;
-          else if (this.isEmber && y <= 24 && y > height) id = liquidId; // magma seas in low basins
+          else if (y <= this.floodMaxY) id = liquidId; // sea, or magma in low basins
 
           if (y > 0 && y < crustBottom && id === stoneId &&
               (this.isCave(wx, y, wz) || this.isCavern(wx, y, wz))) id = airId;
@@ -211,6 +253,7 @@ export class TerrainGenerator {
       }
     }
 
+    if (this.floatingIslands) this._placeFloatingIslands(chunk, baseX, baseZ);
     this._scatterOres(chunk, baseX, baseZ, stoneId);
     this._scatterCaveFlora(chunk, baseX, baseZ, stoneId);
     this._placeStructures(chunk, baseX, baseZ);
@@ -218,8 +261,67 @@ export class TerrainGenerator {
     chunk.generated = true;
   }
 
+  /**
+   * The Eternal Rift's floating land. A band of 3D noise above the terrain
+   * becomes solid where the field is dense enough, with a vertical falloff
+   * that is strongest in the middle of the band — so the islands come out
+   * lens-shaped, thick through the centre and tapering at top and bottom,
+   * rather than as a slab with holes in it.
+   *
+   * They are generated per-column like everything else, which is what keeps
+   * them seamless across chunk borders: the noise does not know or care
+   * which chunk is asking.
+   */
+  _placeFloatingIslands(chunk, baseX, baseZ) {
+    const { minY, maxY, threshold } = this.floatingIslands;
+    const stoneId = BlockRegistry.idOf(this.stoneBlock);
+    const shaleId = BlockRegistry.idOf('rift_shale');
+    const turfId = BlockRegistry.idOf('pale_turf');
+    const mid = (minY + maxY) / 2;
+    const halfSpan = (maxY - minY) / 2;
+
+    for (let lz = 0; lz < CHUNK_SIZE_Z; lz++) {
+      for (let lx = 0; lx < CHUNK_SIZE_X; lx++) {
+        const wx = baseX + lx, wz = baseZ + lz;
+        // A cheap 2D mask first: most of the sky is empty, and sampling 43
+        // levels of 3D noise to discover that doubled the cost of generating
+        // a Rift chunk.
+        if (this.islandNoise.fbm2D(wx * 0.006, wz * 0.006, { octaves: 2 }) < -0.05) continue;
+        let placedAny = false;
+
+        for (let y = minY; y <= maxY; y++) {
+          if (chunk.getBlock(lx, y, lz) !== 0) continue; // never overwrite terrain
+          // 1 in the middle of the band, 0 at its edges.
+          const falloff = 1 - Math.abs(y - mid) / halfSpan;
+          const density = this.islandNoise.fbm3D(wx * 0.017, y * 0.055, wz * 0.017, { octaves: 3, gain: 0.5 });
+          if (density * falloff < threshold) continue;
+          chunk.setBlock(lx, y, lz, stoneId, { recordDiff: false });
+          placedAny = true;
+        }
+        if (!placedAny) continue;
+
+        // Dress the island: turf on every surface that has sky above it, a
+        // few blocks of shale under that, bare stone below.
+        for (let y = maxY; y >= minY; y--) {
+          if (chunk.getBlock(lx, y, lz) !== stoneId) continue;
+          if (chunk.getBlock(lx, y + 1, lz) !== 0) continue;
+          chunk.setBlock(lx, y, lz, turfId, { recordDiff: false });
+          for (let d = 1; d <= 3; d++) {
+            if (chunk.getBlock(lx, y - d, lz) === stoneId) chunk.setBlock(lx, y - d, lz, shaleId, { recordDiff: false });
+          }
+          // Something grows up here, which is how you tell an island from a
+          // ceiling when you are standing under one.
+          if (hash2D(wx, wz, this.seed ^ 0x1541a1) < 0.05) {
+            chunk.setBlock(lx, y + 1, lz, BlockRegistry.idOf('voidbloom'), { recordDiff: false });
+          }
+          break; // only the topmost surface of each column
+        }
+      }
+    }
+  }
+
   _scatterColumn(chunk, lx, lz, wx, wz, height, biome) {
-    if (height <= this.seaLevel && !this.isEmber) return; // no plants/trees underwater
+    if (height <= this.floodMaxY) return; // no plants/trees under the sea, or under magma
     const h1 = hash2D(wx, wz, this.seed ^ 0x51ed270b);
     if (biome.treeType && h1 < biome.treeDensity) {
       this._placeTree(chunk, lx, height + 1, lz, biome.treeType);
@@ -261,9 +363,7 @@ export class TerrainGenerator {
    * emit light, so caves are partly lit by their own growth.
    */
   _scatterCaveFlora(chunk, baseX, baseZ, stoneId) {
-    const flora = this.isEmber
-      ? { floor: ['cinderbloom'], ceiling: [] }
-      : { floor: ['glowcap', 'duskcap', 'cavefern'], ceiling: ['dripvine'] };
+    const flora = this.caveFlora;
     const floorIds = flora.floor.map((n) => BlockRegistry.idOf(n));
     const ceilingIds = flora.ceiling.map((n) => BlockRegistry.idOf(n));
     const topOfCaves = Math.min(CAVERN_MAX_Y + 12, CHUNK_HEIGHT - 1);
@@ -405,15 +505,20 @@ export class TerrainGenerator {
    * loading a single chunk — used to give the Cinder Warden a lair the
    * player can actually walk to.
    */
-  megaStructureNear(wx, wz) {
+  megaStructureNear(wx, wz, onlyId = null) {
     const regionX = Math.floor(wx / REGION_SIZE);
     const regionZ = Math.floor(wz / REGION_SIZE);
     const context = this._megaContext();
     let best = null;
-    for (let rz = regionZ - 1; rz <= regionZ + 1; rz++) {
-      for (let rx = regionX - 1; rx <= regionX + 1; rx++) {
+    // One ring is enough when any landmark will do. Asking for a particular
+    // one — the Titan's fortress, say — means most regions are the wrong
+    // kind, so the search widens.
+    const reach = onlyId ? 2 : 1;
+    for (let rz = regionZ - reach; rz <= regionZ + reach; rz++) {
+      for (let rx = regionX - reach; rx <= regionX + reach; rx++) {
         const placed = megaStructureForRegion(rx, rz, context);
         if (!placed) continue;
+        if (onlyId && placed.mega.id !== onlyId) continue;
         const distance = Math.hypot(placed.x - wx, placed.z - wz);
         if (!best || distance < best.distance) best = { ...placed, distance };
       }

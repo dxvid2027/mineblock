@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Entity } from './Entity.js';
 import { buildMobMesh } from '../render/MobModels.js';
 import { createHealthBar } from '../render/HealthBar.js';
+import { BossBehaviour } from './BossBehaviour.js';
 
 // How far past its own body a creature can reach. Added to the half-width,
 // so a Warden with a four-block reach still has to close in, while a
@@ -61,15 +62,23 @@ export class Mob extends Entity {
       this.healthBar.position.y = this.bodyHeight + 0.25;
       this.mesh.add(this.healthBar);
     }
+    // Multi-phase bosses drive their own fight; everything else keeps the
+    // plain four-state machine below.
+    this.boss = species.phases ? new BossBehaviour(this) : null;
     this.id = `${species.id}-${Math.random().toString(36).slice(2, 9)}`;
   }
 
-  update(dt, world, player) {
+  update(dt, world, player, entities) {
     if (!this.alive) return;
     const distToPlayer = player.alive ? this.distanceTo(player.position) : Infinity;
 
     if (this._attackCooldown > 0) this._attackCooldown -= dt;
     if (this._fleeTimer > 0) this._fleeTimer -= dt;
+
+    // A boss between phases stands its ground and cannot be hurt; the rest of
+    // the tick still runs so it keeps falling and animating.
+    const holding = this.boss ? this.boss.update(dt, entities, player) : false;
+    const phase = this.boss?.phase ?? null;
 
     // Reach is measured from the edge of the body, not from its centre, or a
     // creature twice as wide would have to overlap the player to land a hit.
@@ -82,7 +91,8 @@ export class Mob extends Entity {
       this.state = 'wander';
     }
 
-    const horizontalSpeed = this.species.speed;
+    if (holding) this.state = 'wander';
+    const horizontalSpeed = phase?.speed ?? this.species.speed;
     let moveX = 0, moveZ = 0;
 
     if (this.state === 'chase' || this.state === 'attack') {
@@ -90,15 +100,18 @@ export class Mob extends Entity {
       const len = Math.hypot(dx, dz) || 1;
       moveX = dx / len; moveZ = dz / len;
       if (this.state === 'attack' && this._attackCooldown <= 0) {
-        player.damage(this.species.damage);
+        const hit = phase?.damage ?? this.species.damage;
+        player.damage(hit);
         const thornsTier = player.inventory.thornedWardTier();
-        if (thornsTier > 0) this.damage(this.species.damage * 0.15 * thornsTier);
-        this._attackCooldown = ATTACK_COOLDOWN;
+        if (thornsTier > 0) this.damage(hit * 0.15 * thornsTier);
+        this._attackCooldown = phase?.attackCooldown ?? ATTACK_COOLDOWN;
       }
     } else if (this.state === 'flee') {
       const dx = this.position.x - player.position.x, dz = this.position.z - player.position.z;
       const len = Math.hypot(dx, dz) || 1;
       moveX = dx / len; moveZ = dz / len;
+    } else if (holding) {
+      moveX = 0; moveZ = 0; // rooted while it changes gear
     } else {
       this._wanderTimer -= dt;
       if (this._wanderTimer <= 0) {

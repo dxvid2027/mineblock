@@ -77,7 +77,27 @@ export const RECIPES = [
     { P, M: { id: 'ferrite_ingot' } }, { id: 'bulwark_shield', count: 1 }),
   shapeless('warding_totem',
     [{ id: 'aurum_ingot', count: 4 }, { id: 'glimmer_shard', count: 2 }, { id: 'infusion_dust', count: 1 }],
-    { id: 'warding_totem', count: 1 })
+    { id: 'warding_totem', count: 1 }),
+
+  // --- The Eternal Rift ---
+  // Two artifacts, one from each dimension, and neither is given up
+  // willingly: the Sentinel Heart is carried by the Spire Sentinel at the top
+  // of the Hollow Spire, the Warden Core by the Cinder Warden at the
+  // Emberforge. Everything else here is the Overworld's deepest seams.
+  shapeless('rift_core',
+    [{ id: 'sentinel_heart', count: 1 }, { id: 'warden_core', count: 1 },
+      { id: 'voidshard', count: 3 }, { id: 'glimmer_shard', count: 2 }, { id: 'aurum_ingot', count: 2 }],
+    { id: 'rift_core', count: 1 }),
+  // The core set into a frame you can stand in front of.
+  shaped('rift_gate', ['PPP', 'PCP', 'PPP'],
+    { P: { id: 'polished_stone' }, C: { id: 'rift_core' } }, { id: 'rift_gate', count: 1 }),
+  // Made on the far side, from what the Rift itself gives up.
+  shapeless('rift_compass',
+    [{ id: 'aether_dust', count: 4 }, { id: 'titanite_ingot', count: 1 }, { id: 'glint_ingot', count: 2 }],
+    { id: 'rift_compass', count: 1 }),
+  shapeless('eternal_sigil',
+    [{ id: 'titan_heart', count: 1 }, { id: 'titanite_ingot', count: 4 }, { id: 'aether_dust', count: 2 }],
+    { id: 'eternal_sigil', count: 1 })
 ];
 
 // Programmatically add tool + weapon recipes for every material tier.
@@ -126,6 +146,8 @@ export const SMELTING_RECIPES = [
   { input: 'ferrite_chunk', output: 'ferrite_ingot', count: 1, time: 10 },
   { input: 'aurum_chunk', output: 'aurum_ingot', count: 1, time: 10 },
   { input: 'glint_chunk', output: 'glint_ingot', count: 1, time: 9 },
+  // Titanite takes its time.
+  { input: 'titanite_chunk', output: 'titanite_ingot', count: 1, time: 22 },
   { input: 'sand', output: 'glass_pane', count: 1, time: 6 },
   { input: 'red_sand', output: 'glass_pane', count: 1, time: 6 },
   { input: 'loam', output: 'sunbaked_brick', count: 1, time: 7 },

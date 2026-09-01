@@ -135,6 +135,50 @@ export function rollLoot(tableId, rng = Math.random) {
   return out.slice(0, 27);
 }
 
+// The Eternal Rift's tables. Everything here is either unobtainable
+// elsewhere or a shortcut past a lot of mining — the Rift is the endgame and
+// its vaults should feel like it.
+LOOT_TABLES.forgotten_shrine = [
+  { id: 'aether_dust', min: 2, max: 6, chance: 0.8 },
+  { id: 'voidbloom', min: 1, max: 3, chance: 0.5 },
+  { id: 'glimmer_shard', min: 1, max: 3, chance: 0.4 },
+  { id: 'elixir_of_mending', min: 1, max: 2, chance: 0.35 }
+];
+LOOT_TABLES.crystal_cache = [
+  { id: 'aether_dust', min: 4, max: 9, chance: 0.9 },
+  { id: 'voidshard', min: 1, max: 3, chance: 0.5 },
+  { id: 'titanite_chunk', min: 1, max: 2, chance: 0.25 },
+  { id: 'rift_brick', min: 4, max: 12, chance: 0.5 }
+];
+LOOT_TABLES.treasure_vault = [
+  { id: 'titanite_chunk', min: 2, max: 5, chance: 0.75 },
+  { id: 'aether_dust', min: 6, max: 12, chance: 0.8 },
+  { id: 'voidshard', min: 2, max: 5, chance: 0.6 },
+  { id: 'warding_totem', min: 1, max: 1, chance: 0.4 },
+  { id: 'elixir_of_mending', min: 1, max: 3, chance: 0.5 }
+];
+LOOT_TABLES.hidden_laboratory = [
+  { id: 'infusion_dust', min: 3, max: 8, chance: 0.8 },
+  { id: 'rune_shard', min: 1, max: 3, chance: 0.6 },
+  { id: 'aether_dust', min: 3, max: 7, chance: 0.7 },
+  { id: 'glint_ingot', min: 2, max: 5, chance: 0.5 },
+  { id: 'titanite_chunk', min: 1, max: 1, chance: 0.2 }
+];
+LOOT_TABLES.ancient_battlefield = [
+  { id: 'voidshard_sword', min: 1, max: 1, chance: 0.25 },
+  { id: 'voidshard_helmet', min: 1, max: 1, chance: 0.2 },
+  { id: 'bulwark_shield', min: 1, max: 1, chance: 0.35 },
+  { id: 'aether_dust', min: 2, max: 5, chance: 0.6 },
+  { id: 'cooked_meat', min: 2, max: 5, chance: 0.5 }
+];
+LOOT_TABLES.underground_city = [
+  { id: 'rift_brick', min: 8, max: 20, chance: 0.7 },
+  { id: 'pale_marble', min: 6, max: 16, chance: 0.6 },
+  { id: 'aether_dust', min: 3, max: 8, chance: 0.7 },
+  { id: 'titanite_chunk', min: 1, max: 3, chance: 0.3 },
+  { id: 'vigor_amulet', min: 1, max: 1, chance: 0.2 }
+];
+
 // ---------------------------------------------------------------------- //
 // Building helpers
 // ---------------------------------------------------------------------- //
@@ -369,6 +413,120 @@ export const STRUCTURES = [
       api.set(0, 1, 0, 'riftstone');
       api.crate(1, 1, 0, 'cinder_vault');
       api.set(-1, 1, 0, 'sulfur_crystal');
+    }
+  }
+,
+
+  // ---------------- The Eternal Rift ----------------
+  // Six small structures on top of the two landmarks. Everything here has to
+  // stay within +/-4 blocks horizontally, same as the rest of this file; the
+  // big pieces are in MegaStructures.js.
+  {
+    id: 'forgotten_shrine',
+    placement: SURFACE,
+    dimensions: ['eternal_rift'],
+    chance: 0.030,
+    loot: 'forgotten_shrine',
+    build(api) {
+      slab(api, -2, -2, 2, 2, 0, 'pale_marble');
+      for (const [dx, dz] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) pillar(api, dx, dz, 1, 4, 'runed_basalt');
+      slab(api, -2, -2, 2, 2, 5, 'pale_marble');
+      api.set(0, 1, 0, 'aether_crystal');
+      api.crate(1, 1, 1, 'forgotten_shrine');
+      erode(api, -2, 3, -2, 2, 5, 2, 0.28);
+    }
+  },
+  {
+    id: 'ancient_tower',
+    placement: SURFACE,
+    dimensions: ['eternal_rift'],
+    chance: 0.024,
+    loot: 'crystal_cache',
+    build(api) {
+      const height = 9 + Math.floor(api.rng() * 5);
+      hollowBox(api, -2, 0, -2, 2, height, 2, 'rift_brick', 'runed_basalt');
+      api.air(0, 1, -2); api.air(0, 2, -2); // doorway
+      for (let y = 1; y < height; y++) api.set(1, y, 1, 'ladder');
+      for (let y = 3; y < height; y += 3) { api.air(-2, y, 0); api.air(2, y, 0); } // window slits
+      api.set(0, height - 1, 0, 'aether_crystal');
+      api.crate(-1, 1, 1, 'crystal_cache');
+      erode(api, -2, height - 3, -2, 2, height, 2, 0.5);
+    }
+  },
+  {
+    id: 'ancient_battlefield',
+    placement: SURFACE,
+    dimensions: ['eternal_rift'],
+    chance: 0.026,
+    loot: 'ancient_battlefield',
+    build(api) {
+      // Broken ground, half-buried weapons, and a cairn over whoever lost.
+      for (let x = -4; x <= 4; x++) {
+        for (let z = -4; z <= 4; z++) {
+          if (api.rng() < 0.35) api.set(x, 0, z, 'ashen_silt');
+          if (api.rng() < 0.10) api.set(x, 1, z, 'rift_brick');
+        }
+      }
+      for (let i = 0; i < 5; i++) {
+        const x = -3 + Math.floor(api.rng() * 7), z = -3 + Math.floor(api.rng() * 7);
+        pillar(api, x, z, 1, 1 + Math.floor(api.rng() * 2), 'runed_basalt');
+      }
+      pillar(api, 0, 0, 1, 3, 'pale_marble');
+      api.set(0, 4, 0, 'aether_crystal');
+      api.crate(2, 1, -2, 'ancient_battlefield');
+    }
+  },
+  {
+    id: 'crystal_cavern_pocket',
+    placement: UNDERGROUND,
+    dimensions: ['eternal_rift'],
+    minY: 8, maxY: 40,
+    chance: 0.05,
+    loot: 'crystal_cache',
+    build(api) {
+      // A geode: hollowed out, lined with crystal.
+      for (let x = -3; x <= 3; x++)
+        for (let y = -3; y <= 3; y++)
+          for (let z = -3; z <= 3; z++) {
+            const d = Math.abs(x) + Math.abs(y) + Math.abs(z);
+            if (d <= 3) api.air(x, y, z);
+            else if (d === 4 && api.rng() < 0.55) api.set(x, y, z, 'aether_crystal');
+          }
+      api.crate(0, -2, 0, 'crystal_cache');
+    }
+  },
+  {
+    id: 'hidden_laboratory',
+    placement: UNDERGROUND,
+    dimensions: ['eternal_rift'],
+    minY: 10, maxY: 38,
+    chance: 0.028,
+    loot: 'hidden_laboratory',
+    build(api) {
+      hollowBox(api, -3, 0, -3, 3, 4, 3, 'pale_marble', 'runed_basalt');
+      // Benches down both walls, and a Runeforge still standing.
+      for (let z = -2; z <= 2; z++) { api.set(-2, 1, z, 'rift_brick'); api.set(2, 1, z, 'rift_brick'); }
+      api.set(0, 1, 2, 'runeforge');
+      api.set(0, 1, -2, 'smelter');
+      api.set(-2, 2, 0, 'aether_crystal');
+      api.set(2, 2, 0, 'aether_crystal');
+      api.crate(1, 1, 1, 'hidden_laboratory');
+      erode(api, -3, 3, -3, 3, 4, 3, 0.2);
+    }
+  },
+  {
+    id: 'treasure_vault',
+    placement: UNDERGROUND,
+    dimensions: ['eternal_rift'],
+    minY: 8, maxY: 30,
+    chance: 0.016,
+    loot: 'treasure_vault',
+    build(api) {
+      // Sealed on all six sides — you have to break in.
+      hollowBox(api, -2, 0, -2, 2, 4, 2, 'runed_basalt', 'runed_basalt');
+      api.set(0, 3, 0, 'aether_crystal');
+      api.crate(0, 1, 0, 'treasure_vault');
+      api.crate(-1, 1, -1, 'treasure_vault');
     }
   }
 ];

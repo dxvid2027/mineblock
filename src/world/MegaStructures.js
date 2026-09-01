@@ -115,8 +115,11 @@ export const MEGA_STRUCTURES = [
     // actually reaches (tests/megastructures.test.js checks that it does).
     // Six storeys is what fits: the overworld only ever offers ground
     // between the shoreline and y=68, and a seventh put the crown — and its
-    // lanterns — above y=128, where it was silently sliced off.
-    height: 56,
+    // lanterns — above y=128, where it was silently sliced off. The build
+    // tops out 54 above its base, so 55 is the true figure; declaring 56
+    // cost the Spire every hilltop at y=68 once placement started counting
+    // from the base block rather than the ground under it.
+    height: 55,
     loot: 'hollow_spire',
     build(api) {
       const S = 'stone_bricks', P = 'polished_stone';
@@ -269,6 +272,168 @@ export const MEGA_STRUCTURES = [
       erode(api, -13, 8, -13, 13, 25, 13, 0.05);
     }
   }
+,
+
+  // ------------------------------------------------------------------ //
+  // The Eternal Rift
+  //
+  // Four landmarks rather than one, because the Rift is the endgame and its
+  // horizon is supposed to have something on it wherever you look. The
+  // region grid still allows only one per region, so they are spread out —
+  // megaStructureForRegion picks between whichever candidates a dimension
+  // offers, seeded from the region's own coordinates.
+  // ------------------------------------------------------------------ //
+  {
+    id: 'ruined_fortress',
+    displayName: 'The Ruined Fortress',
+    dimensions: ['eternal_rift'],
+    radius: 16,
+    height: 40,
+    loot: 'treasure_vault',
+    build(api) {
+      const W = 'rift_brick', M = 'pale_marble', B = 'runed_basalt';
+      box(api, -15, -2, -15, 15, 0, 15, W);
+      slab(api, -15, -15, 15, 15, 1, M);
+      foundation(api, -15, -15, 15, 15, -2, 14, W);
+
+      // Curtain wall with a gatehouse on the north face.
+      shell(api, -14, 1, -14, 14, 12, 14, W, 2);
+      for (let i = -2; i <= 2; i++) for (let y = 2; y <= 6; y++) { api.air(i, y, -14); api.air(i, y, -13); }
+      ring(api, -14, -14, 14, 14, 13, B);
+
+      // Four corner keeps of different heights, so the silhouette is not a box.
+      const keeps = [[-1, -1, 26], [1, -1, 22], [-1, 1, 30], [1, 1, 24]];
+      for (const [sx, sz, top] of keeps) {
+        const cx = sx * 11, cz = sz * 11;
+        shell(api, cx - 4, 1, cz - 4, cx + 4, top, cz + 4, W, 1);
+        ring(api, cx - 4, cz - 4, cx + 4, cz + 4, top + 1, M);
+        api.set(cx, top + 2, cz, 'aether_crystal');
+        for (let y = 5; y <= top - 3; y += 5) { api.air(cx - 4, y, cz); api.air(cx + 4, y, cz); }
+        for (let y = 2; y <= top; y++) api.set(cx + 3, y, cz + 3, 'ladder');
+      }
+
+      // Great hall down the middle of the yard.
+      shell(api, -6, 1, -5, 6, 9, 5, M, 1);
+      for (let i = -4; i <= 4; i += 2) api.set(i, 10, 0, 'aether_crystal');
+      for (let y = 2; y <= 5; y++) { api.air(0, y, -5); api.air(0, y, 5); }
+
+      api.crate(-4, 2, 0, 'treasure_vault');
+      api.crate(9, 2, -9, 'ancient_battlefield');
+      api.crate(-11, 2, 11, 'crystal_cache');
+      erode(api, -14, 6, -14, 14, 20, 14, 0.07);
+    }
+  },
+  {
+    id: 'floating_temple',
+    displayName: 'The Floating Temple',
+    dimensions: ['eternal_rift'],
+    radius: 14,
+    // Built high on purpose: it sits in the island band, so it reads as
+    // hanging in the air rather than standing on anything.
+    height: 34,
+    lift: 46,
+    loot: 'forgotten_shrine',
+    build(api) {
+      const M = 'pale_marble', B = 'runed_basalt', G = 'void_glass';
+      // An inverted stepped base, widest at the top — nothing holds it up.
+      for (let i = 0; i < 5; i++) {
+        const r = 5 + i * 2;
+        slab(api, -r, -r, r, r, i, i === 4 ? M : B);
+      }
+      // Colonnade.
+      const cols = [];
+      for (let a = 0; a < 12; a++) {
+        const angle = (a / 12) * Math.PI * 2;
+        cols.push([Math.round(Math.cos(angle) * 10), Math.round(Math.sin(angle) * 10)]);
+      }
+      for (const [cx, cz] of cols) pillar(api, cx, cz, 5, 14, M);
+      ring(api, -11, -11, 11, 11, 15, M);
+      slab(api, -11, -11, 11, 11, 16, M);
+
+      // Inner sanctum with glass walls and the crystal it was built around.
+      shell(api, -4, 5, -4, 4, 13, 4, G, 1);
+      slab(api, -4, -4, 4, 4, 14, M);
+      for (let y = 6; y <= 12; y++) api.set(0, y, 0, 'aether_crystal');
+      for (let y = 6; y <= 8; y++) { api.air(0, y, -4); api.air(0, y, 4); }
+
+      api.crate(3, 6, 3, 'forgotten_shrine');
+      api.crate(-3, 6, -3, 'treasure_vault');
+      // A ladder down through the base, so it can be left without falling.
+      for (let y = -1; y <= 5; y++) api.set(6, y, 0, 'ladder');
+      erode(api, -11, 12, -11, 11, 16, 11, 0.10);
+    }
+  },
+  {
+    id: 'sunken_city',
+    displayName: 'The Sunken City',
+    dimensions: ['eternal_rift'],
+    radius: 15,
+    height: 18,
+    // Sunk below the surface: a city with its roofs at ground level.
+    lift: -22,
+    loot: 'underground_city',
+    build(api) {
+      const W = 'rift_brick', M = 'pale_marble', B = 'runed_basalt';
+      // Hollow out the cavern the city stands in.
+      for (let x = -14; x <= 14; x++) {
+        for (let z = -14; z <= 14; z++) {
+          if (!api.column(x, z)) continue;
+          for (let y = 1; y <= 16; y++) api.air(x, y, z);
+        }
+      }
+      slab(api, -14, -14, 14, 14, 0, W);
+      // Streets on a grid, houses in the blocks between them.
+      for (let bx = -12; bx <= 8; bx += 7) {
+        for (let bz = -12; bz <= 8; bz += 7) {
+          const h = 4 + Math.floor(api.rng() * 5);
+          shell(api, bx, 1, bz, bx + 4, h, bz + 4, W, 1);
+          api.air(bx + 2, 1, bz); api.air(bx + 2, 2, bz);
+          slab(api, bx, bz, bx + 4, bz + 4, h + 1, M);
+          if (api.rng() < 0.5) api.set(bx + 2, h + 2, bz + 2, 'aether_crystal');
+        }
+      }
+      // A plaza with a monument, so the place has a centre.
+      slab(api, -3, -3, 3, 3, 1, M);
+      pillar(api, 0, 0, 2, 10, B);
+      api.set(0, 11, 0, 'aether_crystal');
+      // Ceiling lights, otherwise it is pitch dark down here.
+      for (let x = -12; x <= 12; x += 6) for (let z = -12; z <= 12; z += 6) api.set(x, 16, z, 'aether_crystal');
+      slab(api, -14, -14, 14, 14, 17, W);
+
+      api.crate(-6, 2, 6, 'underground_city');
+      api.crate(6, 2, -6, 'treasure_vault');
+      api.crate(0, 2, 8, 'hidden_laboratory');
+      erode(api, -14, 3, -14, 14, 14, 14, 0.05);
+    }
+  },
+  {
+    id: 'titan_outpost',
+    displayName: 'A Boss Outpost',
+    dimensions: ['eternal_rift'],
+    radius: 12,
+    height: 22,
+    loot: 'ancient_battlefield',
+    // Where the Riftbound Colossus stands. Game.js reads this flag to know
+    // which landmarks are worth putting a mini-boss on.
+    guardian: 'riftbound_colossus',
+    build(api) {
+      const B = 'runed_basalt', M = 'pale_marble';
+      box(api, -11, -2, -11, 11, 0, 11, B);
+      slab(api, -11, -11, 11, 11, 1, M);
+      foundation(api, -11, -11, 11, 11, -2, 12, B);
+      // An open ring of standing stones: a place to fight, not to hide in.
+      for (let a = 0; a < 10; a++) {
+        const angle = (a / 10) * Math.PI * 2;
+        const cx = Math.round(Math.cos(angle) * 9), cz = Math.round(Math.sin(angle) * 9);
+        for (let y = 2; y <= 9 + (a % 3) * 3; y++) api.set(cx, y, cz, B);
+        api.set(cx, 10 + (a % 3) * 3, cz, 'aether_crystal');
+      }
+      ring(api, -4, -4, 4, 4, 1, M);
+      api.crate(-2, 2, -2, 'ancient_battlefield');
+      api.crate(2, 2, 2, 'treasure_vault');
+      erode(api, -11, 4, -11, 11, 16, 11, 0.06);
+    }
+  }
 ];
 
 /**
@@ -294,11 +459,18 @@ export function megaStructureForRegion(regionX, regionZ, { seed, dimensionId, ha
     const z = regionZ * REGION_SIZE + margin + Math.floor(hash2D(regionX, regionZ + attempt * 13, salt + 29) * span);
     const ground = heightAt(x, z);
 
+    // `lift` moves a landmark off the ground it was placed against: positive
+    // for the Floating Temple, which hangs up among the islands, negative for
+    // the Sunken City, whose roofs come out at ground level. Both ends of the
+    // build have to stay inside the world.
+    const base = ground + 1 + (mega.lift ?? 0);
+
     // Never in the sea, and never so high that the top would be cut off by
     // the world ceiling.
-    if (!isEmber && ground <= seaLevel + 1) continue;
-    if (ground < 6 || ground + mega.height > CHUNK_HEIGHT - 4) continue;
-    return { mega, x, y: ground + 1, z };
+    if (!isEmber && seaLevel > 0 && ground <= seaLevel + 1) continue;
+    if (ground < 6) continue;
+    if (base < 2 || base + mega.height > CHUNK_HEIGHT - 4) continue;
+    return { mega, x, y: base, z };
   }
   return null;
 }

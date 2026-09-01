@@ -34,7 +34,11 @@ export const MATERIAL_TIERS = [
   { id: 'ferrite', name: 'Ferrite', color: '#b8926a', tierIndex: 2 },
   { id: 'aurum', name: 'Aurum', color: '#e8cf4f', tierIndex: 3 },
   { id: 'glimmer', name: 'Glimmer', color: '#8fe9e0', tierIndex: 4 },
-  { id: 'voidshard', name: 'Voidshard', color: '#a35bff', tierIndex: 5 }
+  { id: 'voidshard', name: 'Voidshard', color: '#a35bff', tierIndex: 5 },
+  // Titanite is the end of the chain and only exists in the Eternal Rift.
+  // Adding it here is what gives it a full set of tools, armour and recipes
+  // — the tier tables below and CraftingRecipes both walk this list.
+  { id: 'titanite', name: 'Titanite', color: '#ffd98a', tierIndex: 6 }
 ];
 
 const TOOL_STATS = {
@@ -43,7 +47,8 @@ const TOOL_STATS = {
   ferrite: { durability: 260, miningSpeed: 6.0, miningLevel: 2, damage: 3 },
   aurum: { durability: 100, miningSpeed: 9.0, miningLevel: 3, damage: 2 },
   glimmer: { durability: 900, miningSpeed: 8.0, miningLevel: 3, damage: 4 },
-  voidshard: { durability: 1800, miningSpeed: 10.0, miningLevel: 4, damage: 6 }
+  voidshard: { durability: 1800, miningSpeed: 10.0, miningLevel: 4, damage: 6 },
+  titanite: { durability: 4000, miningSpeed: 14.0, miningLevel: 5, damage: 9 }
 };
 
 const ARMOR_STATS = {
@@ -51,7 +56,8 @@ const ARMOR_STATS = {
   ferrite: { defense: 2, toughness: 1 },
   aurum: { defense: 1, toughness: 0 },
   glimmer: { defense: 3, toughness: 2 },
-  voidshard: { defense: 4, toughness: 3 }
+  voidshard: { defense: 4, toughness: 3 },
+  titanite: { defense: 6, toughness: 4 }
 };
 
 const ARMOR_SLOTS = [
@@ -189,6 +195,32 @@ ItemRegistry.register({
 // Misc / crafted tools
 // ---------------------------------------------------------------------- //
 ItemRegistry.register({ id: 'flint_striker', displayName: 'Flint Striker', category: 'tool', description: 'Strikes a spark. Lights torches and Smelters.', stackSize: 1, texture: icon('striker', '#7a7a7f') });
+
+// ---------------------------------------------------------------------- //
+// The Eternal Rift
+// ---------------------------------------------------------------------- //
+ItemRegistry.register({ id: 'aether_dust', displayName: 'Aether Dust', category: 'material', description: 'Ground from Aether Crystal. It will not stop glowing.', texture: icon('dust', '#6fe8ff') });
+
+// The two artifacts. One per existing dimension, each held by something that
+// will not give it up: the Spire Sentinel at the top of the Hollow Spire, and
+// the Cinder Warden at the Emberforge.
+ItemRegistry.register({ id: 'sentinel_heart', displayName: 'Sentinel Heart', category: 'magic', stackSize: 1, description: 'Torn from the Spire Sentinel. Still keeping time.', texture: icon('gem', '#8fe9e0') });
+
+// Combining both artifacts with what the Overworld's deepest seams give up.
+ItemRegistry.register({ id: 'rift_core', displayName: 'Rift Core', category: 'magic', stackSize: 1, description: 'Two ages fused into one stone. Build it into a Rift Gate.', texture: icon('gem', '#c39bff') });
+
+// Points at the Eternal Titan's arena, and at nothing else.
+ItemRegistry.register({ id: 'rift_compass', displayName: 'Riftfinder', category: 'tool', stackSize: 1, description: 'The needle only ever answers one question: where the Titan waits.', texture: icon('totem', '#6fe8ff') });
+
+// Boss drops.
+ItemRegistry.register({ id: 'titan_heart', displayName: 'Heart of the Titan', category: 'magic', stackSize: 1, description: 'It is still warm. The last thing in the world older than the Rift.', texture: icon('gem', '#ffd98a') });
+ItemRegistry.register({
+  id: 'eternal_sigil', displayName: 'Eternal Sigil', category: 'magic', stackSize: 1,
+  description: 'Worn around the neck. +4 defense, turns aside 40% of every blow, and mends you where you stand.',
+  texture: icon('amulet', '#ffd98a'), equipSlot: 'amulet',
+  armor: { slot: 'amulet', defense: 4, toughness: 2, durability: 2000 },
+  amulet: { ward: 0.40, mending: 0.55 }
+});
 
 export const TOOL_TYPES_LIST = TOOL_TYPES;
 export const ARMOR_SLOTS_LIST = ARMOR_SLOTS.map((s) => s.slot);

@@ -107,6 +107,34 @@ const SKINS = {
     for (let i = 0; i < 4; i++) px(ctx, 4 + i, 5 + Math.floor(i / 2), 2, 1, 'rgba(255,255,255,0.28)');
   },
 
+  /** Faceted crystal, for everything that grew out of the Rift's caves. */
+  crystal(ctx, size, base, accent, rng) {
+    const a = hexToRgb(base), b = hexToRgb(accent);
+    const facet = makeNoise(rng, 3);
+    // Four flat tones rather than a gradient: crystal reads as facets, and a
+    // smooth blend at this size just looks like fog.
+    paint(ctx, size, (x, y) => shadeRgb(mixRgb(a, b, step(facet(x, y, size), 4)), (step(facet(x, y, size), 4) - 0.5) * 46));
+    for (let i = 0; i < 5; i++) { // bright edges where two facets meet
+      const x = Math.floor(rng() * size), y = Math.floor(rng() * size);
+      px(ctx, x, y, 1, 3 + Math.floor(rng() * 4), 'rgba(255,255,255,0.3)');
+    }
+  },
+
+  /** Bone worn smooth, cut with glyphs that still hold a light. */
+  runic(ctx, size, base, accent, rng) {
+    const a = hexToRgb(base), b = hexToRgb(accent);
+    const wear = makeNoise(rng, 5);
+    paint(ctx, size, (x, y) => shadeRgb(a, (step(wear(x, y, size), 4) - 0.5) * 22));
+    // Short straight strokes at right angles — carved, not grown.
+    const glyph = css(b);
+    for (let i = 0; i < 7; i++) {
+      const x = 2 + Math.floor(rng() * (size - 6));
+      const y = 2 + Math.floor(rng() * (size - 6));
+      if (rng() < 0.5) px(ctx, x, y, 2 + Math.floor(rng() * 4), 1, glyph);
+      else px(ctx, x, y, 1, 2 + Math.floor(rng() * 4), glyph);
+    }
+  },
+
   /** Pale ringed segments, for the grub. */
   grub(ctx, size, base, accent, rng) {
     const a = hexToRgb(base), b = hexToRgb(accent);

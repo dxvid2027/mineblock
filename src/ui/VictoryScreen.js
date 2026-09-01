@@ -1,5 +1,5 @@
 /**
- * Shown once the Cinder Warden is defeated — the end of MineBlock's intended
+ * Shown once the Eternal Titan is defeated — the end of MineBlock's intended
  * progression. The world is not ended: the player returns to it and keeps
  * their gear, so building and exploring continue afterwards.
  */
@@ -12,10 +12,11 @@ export class VictoryScreen {
     const panel = document.createElement('div');
     panel.className = 'mb-panel center-panel';
     panel.innerHTML = `
-      <div class="mb-modal-title" style="color:var(--mb-accent-dark);font-size:26px;">The Warden Falls</div>
+      <div class="mb-modal-title" style="color:var(--mb-accent-dark);font-size:26px;">The Titan Falls</div>
       <div style="color:var(--mb-text-dim);font-size:13px;line-height:1.6;margin-bottom:6px;">
-        The Ember Expanse grows quiet. You have carried the Warden Core out of
-        the dark — MineBlock's deepest challenge is behind you.
+        The Eternal Rift goes quiet for the first time in its history. You came
+        through two worlds to get here, and the oldest thing in any of them is
+        behind you. Its Trophy is yours — there is no other way to hold one.
       </div>
       <div style="font-size:12px;color:var(--mb-text-dim);">
         Survived ${stats?.days ?? 1} day(s) · Level ${stats?.level ?? 0}

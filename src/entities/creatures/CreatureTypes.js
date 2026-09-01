@@ -67,6 +67,91 @@ export const CREATURES = {
     hostile: true, maxHealth: 220, speed: 2.4, damage: 9, aggroRange: 30, boss: true,
     drops: [{ id: 'warden_core', count: [1, 1] }, { id: 'voidshard', count: [2, 4] }, { id: 'sulfur_shard', count: [4, 8] }],
     xp: 120, lightEmission: 10
+  },
+
+  // --- The Eternal Rift ---
+  // Nothing here is alive in the way an Overworld animal is: the Riftstalker
+  // is grown crystal, the Hollow One is what is left of whoever built the
+  // ruins, and the Shardling is the Hollows breaking off in pieces.
+  riftstalker: {
+    id: 'riftstalker', displayName: 'Riftstalker', bodyType: 'quad', shape: 'beast', skin: 'crystal', color: 0x4a3f7a, accentColor: 0xb79bff,
+    hostile: true, maxHealth: 34, speed: 4.4, damage: 7, aggroRange: 22,
+    drops: [{ id: 'aether_dust', count: [1, 2] }, { id: 'rift_shale', count: [1, 3] }], xp: 16, lightEmission: 3
+  },
+  hollow_one: {
+    id: 'hollow_one', displayName: 'Hollow One', bodyType: 'biped', shape: 'biped', skin: 'runic', color: 0x9c93b8, accentColor: 0x7fe6d8,
+    hostile: true, maxHealth: 46, speed: 2.6, damage: 9, aggroRange: 20,
+    drops: [{ id: 'aether_dust', count: [1, 3] }, { id: 'voidshard', count: [0, 1], chance: 0.2 }], xp: 20, lightEmission: 4
+  },
+  shardling: {
+    id: 'shardling', displayName: 'Shardling', bodyType: 'quad', shape: 'crawler', skin: 'crystal', features: { plates: true, glowEyes: true }, color: 0x2f2a4a, accentColor: 0x6fe8ff,
+    hostile: true, maxHealth: 22, speed: 3.6, damage: 5, aggroRange: 18,
+    drops: [{ id: 'aether_dust', count: [1, 2] }], xp: 12, lightEmission: 5
+  },
+
+  // --- Artifact guardians ---
+  // One per existing dimension, each standing on top of that dimension's
+  // landmark. They are the gate to the Eternal Rift: without what they carry
+  // the Rift Core cannot be made.
+  spire_sentinel: {
+    id: 'spire_sentinel', displayName: 'The Spire Sentinel', bodyType: 'biped', shape: 'brute', skin: 'stone', color: 0x6d7484, accentColor: 0xc9d6d6,
+    hostile: true, maxHealth: 140, speed: 3.0, damage: 8, aggroRange: 26, miniBoss: true,
+    drops: [{ id: 'sentinel_heart', count: [1, 1] }, { id: 'glimmer_shard', count: [2, 4] }, { id: 'glint_ingot', count: [2, 5] }],
+    xp: 70, lightEmission: 6
+  },
+  // Stands over the Rift's Boss Outposts. Killing one is the other way to
+  // find the Titan: it carries a shard of the Riftfinder's needle.
+  riftbound_colossus: {
+    id: 'riftbound_colossus', displayName: 'Riftbound Colossus', bodyType: 'biped', shape: 'brute', skin: 'runic', color: 0x3a3352, accentColor: 0xffd98a,
+    hostile: true, maxHealth: 260, speed: 2.9, damage: 13, aggroRange: 28, miniBoss: true,
+    drops: [
+      { id: 'titanite_chunk', count: [1, 3] },
+      { id: 'aether_dust', count: [3, 6] },
+      { id: 'rift_compass', count: [1, 1], chance: 0.5 }
+    ],
+    xp: 140, lightEmission: 8
+  },
+
+  // --- Final boss ---
+  // Three phases, each with something new in it. The numbers live here so the
+  // fight can be balanced without touching the code that runs it — see
+  // entities/BossBehaviour.js.
+  eternal_titan: {
+    id: 'eternal_titan', displayName: 'The Eternal Titan', bodyType: 'boss', shape: 'boss', skin: 'runic', color: 0x2b2740, accentColor: 0xffd98a,
+    hostile: true, maxHealth: 900, speed: 2.6, damage: 12, aggroRange: 40, boss: true, finalBoss: true,
+    drops: [
+      { id: 'titan_trophy', count: [1, 1] },
+      { id: 'titan_heart', count: [1, 1] },
+      { id: 'titanite_chunk', count: [6, 10] },
+      { id: 'aether_dust', count: [8, 14] },
+      { id: 'voidshard', count: [4, 8] }
+    ],
+    xp: 600, lightEmission: 12,
+    phases: [
+      {
+        name: 'The Waking', from: 1.0,
+        speed: 2.4, damage: 12, attackCooldown: 1.6,
+        summon: { species: 'hollow_one', count: 2, every: 14 },
+        announce: 'The Eternal Titan opens its eyes.'
+      },
+      {
+        name: 'The Sundering', from: 0.66,
+        speed: 3.2, damage: 15, attackCooldown: 1.2,
+        // A ring of force centred on the Titan. Standing still inside it is
+        // the mistake; the ground is safe once you are outside, and a jump
+        // carries you over it.
+        shockwave: { every: 7, radius: 11, damage: 11 },
+        summon: { species: 'shardling', count: 3, every: 16 },
+        announce: 'The Titan tears the ground open — keep moving.'
+      },
+      {
+        name: 'The Last Age', from: 0.33,
+        speed: 4.0, damage: 18, attackCooldown: 0.85,
+        shockwave: { every: 4, radius: 14, damage: 14 },
+        summon: { species: 'riftstalker', count: 3, every: 11 },
+        announce: 'The Titan stops holding back.'
+      }
+    ]
   }
 };
 

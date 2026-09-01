@@ -124,6 +124,19 @@ export class Inventory {
     return ItemRegistry.get(worn.id)?.amulet?.[name] ?? 0;
   }
 
+  /**
+   * How fast Titanite armour mends its wearer, in hit points per second.
+   * A single piece is a trickle; the full set is the difference between
+   * retreating from the Eternal Titan and standing in front of it.
+   */
+  titaniteMending() {
+    let pieces = 0;
+    for (const slot of ['helmet', 'chest', 'legs', 'boots']) {
+      if (this.equipment[slot]?.id?.startsWith('titanite_')) pieces++;
+    }
+    return pieces * 0.09; // 0.36/s wearing all four
+  }
+
   totalDefense() {
     let defense = 0, toughness = 0;
     for (const slot of Object.keys(this.equipment)) {

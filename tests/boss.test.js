@@ -39,10 +39,34 @@ function headlessEntities() {
   return entities;
 }
 
-test('exactly one creature is the boss, and it is the Cinder Warden', () => {
+test('every boss belongs to a dimension, and exactly one of them ends the game', () => {
   const bosses = Object.values(CREATURES).filter((c) => c.boss);
-  assert.equal(bosses.length, 1, 'the victory condition assumes a single boss');
-  assert.equal(bosses[0].id, 'cinder_warden');
+  assert.ok(bosses.length >= 1, 'the bosses have gone missing');
+  // The victory screen fires on one specific kill. More than one creature
+  // claiming to be the final boss would mean the game could end twice.
+  const finals = bosses.filter((c) => c.finalBoss);
+  assert.equal(finals.length, 1, `${finals.length} creatures claim to be the final boss`);
+  assert.equal(finals[0].id, 'eternal_titan');
+  // The Cinder Warden is still a boss, just no longer the last one.
+  assert.ok(bosses.some((c) => c.id === 'cinder_warden'));
+});
+
+test('the final boss has phases, and they cover the whole health bar', () => {
+  const titan = CREATURES.eternal_titan;
+  assert.ok(Array.isArray(titan.phases) && titan.phases.length >= 3,
+    'a multi-phase fight needs at least three phases');
+  assert.equal(titan.phases[0].from, 1.0, 'the first phase must start at full health');
+  // Descending thresholds, or a phase in the middle could never be reached.
+  for (let i = 1; i < titan.phases.length; i++) {
+    assert.ok(titan.phases[i].from < titan.phases[i - 1].from,
+      `phase "${titan.phases[i].name}" starts at ${titan.phases[i].from}, not below the one before it`);
+  }
+  assert.ok(titan.phases[titan.phases.length - 1].from > 0, 'the last phase must be reachable above zero health');
+  // Each phase has to bring something, or it is the same fight three times.
+  const shapes = titan.phases.map((p) => `${p.speed}|${p.damage}|${p.attackCooldown}|${!!p.shockwave}|${p.summon?.species}`);
+  assert.equal(new Set(shapes).size, shapes.length, 'two phases play identically');
+  assert.ok(titan.maxHealth > CREATURES.cinder_warden.maxHealth * 3,
+    'the final boss should be substantially harder than the one before it');
 });
 
 test('leaving a dimension forgets the boss that left with it', () => {

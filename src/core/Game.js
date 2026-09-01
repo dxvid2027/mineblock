@@ -13,6 +13,7 @@ import { SurvivalSystem } from '../player/SurvivalSystem.js';
 import { EntityManager } from '../entities/EntityManager.js';
 import { ItemRegistry, itemDurability } from '../items/ItemRegistry.js';
 import { BlockRegistry } from '../blocks/BlockRegistry.js';
+import { MEGA_STRUCTURES } from '../world/MegaStructures.js';
 import { cardinalTowards } from './compass.js';
 import { rollLoot } from '../world/Structures.js';
 import { getInfusionLevel } from '../magic/InfusionSystem.js';
@@ -38,6 +39,38 @@ registerBlockItems();
 
 const AUTOSAVE_INTERVAL = 90;
 const OTHER_DIMENSION = { overworld: 'ember_expanse', ember_expanse: 'overworld' };
+
+/**
+ * Where each dimension keeps the thing standing between the player and the
+ * next one. Every entry is a landmark you can see and walk to, so "where do
+ * I find it" always has an answer — the Cinder Warden used to appear on a
+ * coin flip, and there was no answer at all.
+ *
+ * `needs` gates the entry: the Eternal Titan stays asleep, and its bearing
+ * stays hidden, until the player is attuned to the Rift — which means either
+ * carrying a Riftfinder or having put down a Riftbound Colossus.
+ */
+const LAIRS = {
+  overworld: {
+    landmark: 'hollow_spire', guardian: 'spire_sentinel', label: 'Hollow Spire',
+    arrival: 'A tower stands somewhere out on the plain.',
+    near: 'Something is keeping watch at the top of that spire.',
+    wake: 'The Spire Sentinel steps down off the crown.'
+  },
+  ember_expanse: {
+    landmark: 'emberforge', guardian: 'cinder_warden', label: 'Emberforge',
+    arrival: 'Smoke rises from a great forge somewhere out there.',
+    near: 'The forge ahead is not abandoned. Something is still tending it.',
+    wake: 'The Cinder Warden rises from the forge floor.'
+  },
+  eternal_rift: {
+    landmark: 'ruined_fortress', guardian: 'eternal_titan', label: 'Ruined Fortress',
+    needs: 'attunement',
+    arrival: 'Something enormous is asleep in this place. You cannot yet tell where.',
+    near: 'The fortress ahead is breathing.',
+    wake: 'The Eternal Titan stands up.'
+  }
+};
 
 // The Cinder Warden's lair. He wakes when the player reaches the Emberforge,
 // and the forge is announced from further out so walking toward the smoke is
@@ -94,7 +127,14 @@ export class Game {
     globalEvents.on('player:eat', (item) => this._eatItem(item));
     globalEvents.on('player:died', () => this._onPlayerDied());
     globalEvents.on('entity:mobKilled', (species) => {
-      if (species.boss) this._onBossDefeated();
+      this.defeated[species.id] = true;
+      // Putting down a mini-boss is one of the two ways to learn where the
+      // Titan is; crafting a Riftfinder is the other.
+      if (species.miniBoss && species.id === 'riftbound_colossus') this._attuneToRift('colossus');
+      if (species.finalBoss) this._onFinalBossDefeated();
+    });
+    globalEvents.on('inventory:changed', () => {
+      if (this.player?.inventory?.countOf?.('rift_compass') > 0) this._attuneToRift('compass');
     });
   }
 
@@ -102,6 +142,11 @@ export class Game {
     this.saveName = name ?? 'New World';
     this.loading = new LoadingScreen(this.uiRoot, mode === 'load' ? 'Loading world…' : 'Carving a new world…');
     await new Promise((r) => setTimeout(r, 20)); // let the loading screen paint
+
+    // Which guardians have already fallen, and whether the player has been
+    // shown where the Titan is. Set up before anything can emit a kill.
+    this.defeated = {};
+    this.riftAttuned = false;
 
     let saveData = null;
     if (mode === 'load') saveData = await SaveManager.load(name);
@@ -125,6 +170,10 @@ export class Game {
       this.world.loadAllDimensions(saveData.chunkDiffs);
       this.playedTime = saveData.playedTime ?? 0;
       this.bossDefeated = !!saveData.bossDefeated;
+      this.defeated = { ...(saveData.defeated ?? {}) };
+      // Old saves only knew about the one boss there used to be.
+      if (this.bossDefeated) this.defeated.cinder_warden = true;
+      this.riftAttuned = !!saveData.riftAttuned;
     } else {
       // Every new world starts somewhere different: the spawn column is
       // derived from the seed and vetted for dry, walkable ground.
@@ -240,6 +289,7 @@ export class Game {
 
     this._updateEmberlight();
     this._updateBossWatch(dt);
+    this._updateGuardedLandmarks(dt);
     this.hud.update(this.world, this.dayNight, this.interaction, this.entities.boss, this._currentObjective());
     this.debugRenderer.update(this.world, this.entities, this.player);
     this.debugOverlay.trackFrame(dt);
@@ -388,6 +438,13 @@ export class Game {
       this._travelDimension();
       this.input.requestPointerLock();
       return;
+    } else if (type === 'riftGate') {
+      // A Rift Gate only ever connects the world you built it in to the
+      // Eternal Rift, and back again — it is not a third stop on the
+      // Riftstone circuit.
+      this._travelDimension(this.world.dimensionId === 'eternal_rift' ? 'overworld' : 'eternal_rift');
+      this.input.requestPointerLock();
+      return;
     }
   }
 
@@ -422,8 +479,8 @@ export class Game {
     globalEvents.emit('ui:toast', 'You wake up feeling refreshed.');
   }
 
-  _travelDimension() {
-    const nextId = OTHER_DIMENSION[this.world.dimensionId];
+  _travelDimension(target = null) {
+    const nextId = target ?? OTHER_DIMENSION[this.world.dimensionId] ?? 'overworld';
     this.world.setDimension(nextId);
     this.player.dimension = nextId;
     this.entities.setWorld(this.world);
@@ -433,14 +490,10 @@ export class Game {
     this.player.position.set(x + 0.5, topY + 2, z + 0.5);
     this.player.velocity.set(0, 0, 0);
     globalEvents.emit('ui:toast', `You step into ${this.world.dimension.displayName}.`);
-    this._ensureReturnPortal(x, z);
+    this._ensureReturnPortal(x, z, nextId === 'eternal_rift' ? 'rift_gate' : 'riftstone');
 
-    if (nextId === 'ember_expanse' && !this.bossDefeated) {
-      const lair = this.world.generator.megaStructureNear?.(x, z);
-      if (lair) {
-        globalEvents.emit('ui:toast', 'Smoke rises from a great forge somewhere out there.');
-      }
-    }
+    const lair = LAIRS[nextId];
+    if (lair && !this.defeated[lair.guardian]) globalEvents.emit('ui:toast', lair.arrival);
   }
 
   /**
@@ -452,8 +505,24 @@ export class Game {
    * answer. He wakes when you come close and stays awake until one of you
    * falls.
    */
+  /** The lair entry for the dimension the player is standing in, or null. */
+  _currentLair() {
+    const lair = LAIRS[this.world.dimensionId];
+    if (!lair) return null;
+    if (this.defeated[lair.guardian]) return null;
+    if (lair.needs === 'attunement' && !this.riftAttuned) return null;
+    return lair;
+  }
+
+  /**
+   * Watches for the player getting close to whatever guards this dimension.
+   * Every guardian lives on that dimension's landmark, which is visible from
+   * a distance and has a bearing in the HUD, so walking toward one is a
+   * decision rather than an accident.
+   */
   _updateBossWatch(dt) {
-    if (this.bossDefeated || this.entities.bossAlive || this.world.dimensionId !== 'ember_expanse') {
+    const lair = this._currentLair();
+    if (!lair || this.entities.bossAlive || this.entities.mobs.some((m) => m.species.id === lair.guardian)) {
       this._lairTarget = null;
       return;
     }
@@ -465,24 +534,66 @@ export class Game {
     this._bossWatchTimer = BOSS_WATCH_INTERVAL;
 
     const px = this.player.position.x, pz = this.player.position.z;
-    const lair = this.world.generator.megaStructureNear?.(px, pz);
-    this._lairTarget = lair ? { x: lair.x, y: lair.y, z: lair.z } : null;
-    if (!lair) return;
-    const distance = Math.hypot(lair.x - px, lair.z - pz);
+    const found = this.world.generator.megaStructureNear?.(px, pz, lair.landmark);
+    this._lairTarget = found ? { x: found.x, y: found.y, z: found.z, label: lair.label } : null;
+    if (!found) return;
+    const distance = Math.hypot(found.x - px, found.z - pz);
 
     if (distance > BOSS_WAKE_DISTANCE) {
-      // One warning, the first time the forge comes within reach.
-      if (distance < BOSS_HINT_DISTANCE && !this._bossHinted) {
-        this._bossHinted = true;
-        globalEvents.emit('ui:toast', 'The forge ahead is not abandoned. Something is still tending it.');
+      // One warning, the first time the lair comes within reach.
+      this._hinted = this._hinted ?? {};
+      if (distance < BOSS_HINT_DISTANCE && !this._hinted[lair.guardian]) {
+        this._hinted[lair.guardian] = true;
+        globalEvents.emit('ui:toast', lair.near);
       }
       return;
     }
 
-    const spot = this._findLairSpawn(lair);
-    if (!spot) return; // the forge's chunks are not loaded yet; try again shortly
-    this.entities.spawnMob('cinder_warden', spot);
-    globalEvents.emit('ui:toast', 'The Cinder Warden rises from the forge floor.');
+    const spot = this._findLairSpawn(found);
+    if (!spot) return; // the landmark's chunks are not loaded yet; try again shortly
+    this.entities.spawnMob(lair.guardian, spot);
+    globalEvents.emit('ui:toast', lair.wake);
+  }
+
+  /**
+   * Mini-bosses. Some landmarks declare a `guardian` of their own (see
+   * MegaStructures) — the Riftbound Colossus on a Boss Outpost. Unlike the
+   * dimension's own guardian these come back: an outpost is a fight you can
+   * go looking for again, and killing one is the other way to learn where
+   * the Titan is.
+   */
+  _updateGuardedLandmarks(dt) {
+    this._guardWatchTimer = (this._guardWatchTimer ?? 0) - dt;
+    if (this._guardWatchTimer > 0) return;
+    this._guardWatchTimer = BOSS_WATCH_INTERVAL;
+
+    const px = this.player.position.x, pz = this.player.position.z;
+    for (const mega of MEGA_STRUCTURES) {
+      if (!mega.guardian || !mega.dimensions.includes(this.world.dimensionId)) continue;
+      const found = this.world.generator.megaStructureNear?.(px, pz, mega.id);
+      if (!found) continue;
+      if (Math.hypot(found.x - px, found.z - pz) > BOSS_WAKE_DISTANCE) continue;
+      // One at a time, and not while its predecessor is still standing.
+      if (this.entities.mobs.some((m) => m.species.id === mega.guardian)) continue;
+      const spot = this._findLairSpawn(found);
+      if (!spot) continue;
+      this.entities.spawnMob(mega.guardian, spot);
+      globalEvents.emit('ui:toast', 'Something detaches itself from the stones and turns around.');
+      return;
+    }
+  }
+
+  /**
+   * Learning where the Titan is. Either route sets the same flag, and it
+   * survives into the save — a player who finds a Riftfinder in a vault and
+   * loses it has still been told.
+   */
+  _attuneToRift(via) {
+    if (this.riftAttuned) return;
+    this.riftAttuned = true;
+    globalEvents.emit('ui:toast', via === 'compass'
+      ? 'The Riftfinder settles. It has found what it was made to find.'
+      : 'The Colossus falls, and something far off turns to look at you.');
   }
 
   /**
@@ -494,17 +605,17 @@ export class Game {
     const dx = this._lairTarget.x - this.player.position.x;
     const dz = this._lairTarget.z - this.player.position.z;
     return {
-      label: 'Emberforge',
+      label: this._lairTarget.label,
       distance: Math.hypot(dx, dz),
       cardinal: cardinalTowards(dx, dz)
     };
   }
 
   /**
-   * Somewhere in the forge yard the Warden can actually stand: solid ground
+   * Somewhere in the landmark the guardian can actually stand: solid ground
    * that is not magma, with room above. Probed against the loaded world
    * rather than assumed from the blueprint, so an eroded or player-altered
-   * forge still works.
+   * landmark still works.
    */
   _findLairSpawn(lair) {
     const magmaId = BlockRegistry.idOf('magma');
@@ -534,8 +645,8 @@ export class Game {
    * Glimmerstone ore, so a second one cannot be built there. A player who
    * carried a single Riftstone through was stranded for good.
    */
-  _ensureReturnPortal(x, z) {
-    const riftId = BlockRegistry.idOf('riftstone');
+  _ensureReturnPortal(x, z, blockName = 'riftstone') {
+    const riftId = BlockRegistry.idOf(blockName);
     const groundAt = (gx, gz) => this.world.heightAtWorld(gx, gz);
 
     // One already here means this spot is connected; going back and forth
@@ -559,7 +670,8 @@ export class Game {
       if (this.world.getBlockGlobal(px, top + 1, pz) !== 0) continue;
       if (this.world.getBlockGlobal(px, top + 2, pz) !== 0) continue;
       this.world.setBlockGlobal(px, top + 1, pz, riftId);
-      globalEvents.emit('ui:toast', 'A Riftstone settles beside you — your way back.');
+      globalEvents.emit('ui:toast',
+        `A ${BlockRegistry.get(riftId)?.displayName ?? 'gate'} settles beside you — your way back.`);
       return;
     }
   }
@@ -581,7 +693,7 @@ export class Game {
     }
   }
 
-  _onBossDefeated() {
+  _onFinalBossDefeated() {
     if (this.state !== 'playing' || this.bossDefeated) return;
     this.bossDefeated = true;
     this.state = 'victory';

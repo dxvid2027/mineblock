@@ -49,10 +49,16 @@ test('every landmark names a loot table that exists', () => {
   }
 });
 
-test('every dimension has exactly one landmark', () => {
+test('every dimension has at least one landmark, and no landmark is homeless', () => {
   for (const dimId of Object.keys(DIMENSIONS)) {
     const forDim = MEGA_STRUCTURES.filter((m) => m.dimensions.includes(dimId));
-    assert.equal(forDim.length, 1, `dimension "${dimId}" has ${forDim.length} landmarks, expected 1`);
+    assert.ok(forDim.length >= 1, `dimension "${dimId}" has no landmark to walk toward`);
+  }
+  for (const mega of MEGA_STRUCTURES) {
+    assert.ok(mega.dimensions.length > 0, `landmark "${mega.id}" is in no dimension at all`);
+    for (const dimId of mega.dimensions) {
+      assert.ok(DIMENSIONS[dimId], `landmark "${mega.id}" names unknown dimension "${dimId}"`);
+    }
   }
 });
 

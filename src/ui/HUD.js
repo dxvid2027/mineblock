@@ -188,7 +188,14 @@ export class HUD {
     const bar = this.el.querySelector('#hud-bossbar');
     if (!boss || !boss.alive) { bar.style.display = 'none'; return; }
     bar.style.display = 'block';
-    this.el.querySelector('#hud-boss-name').textContent = boss.species.displayName;
+    // A phased fight names the phase it is in, so the rules changing is
+    // legible rather than something the player has to infer from being hit
+    // harder — see entities/BossBehaviour.js.
+    const phase = boss.boss?.phase;
+    const total = boss.boss?.phases?.length ?? 0;
+    this.el.querySelector('#hud-boss-name').textContent = phase
+      ? `${boss.species.displayName} — ${phase.name} (${boss.boss.index + 1}/${total})`
+      : boss.species.displayName;
     const fraction = Math.max(0, boss.health / boss.maxHealth);
     const fill = this.el.querySelector('#hud-boss-fill');
     fill.style.width = `${fraction * 100}%`;
