@@ -3,9 +3,23 @@ import { Entity } from './Entity.js';
 import { buildMobMesh } from '../render/MobModels.js';
 import { createHealthBar } from '../render/HealthBar.js';
 
-const ATTACK_RANGE = 1.6;
+// How far past its own body a creature can reach. Added to the half-width,
+// so a Warden with a four-block reach still has to close in, while a
+// beetle has to be on top of you — one constant, scaled by how big the
+// thing actually is.
+const ATTACK_REACH = 1.3;
 const ATTACK_COOLDOWN = 1.0;
 const WANDER_CHANGE_INTERVAL = 3.5;
+
+// A creature's collision box is not its model. The Cinder Warden stands
+// four blocks tall and looks it, but a box that wide genuinely cannot walk
+// through a voxel world: three block columns across means any step, tree or
+// doorway is a wall. Measured before this was capped, the Warden closed to
+// 2.92 blocks, ran out of room, and stood there with its attack range two
+// blocks short — which is exactly what "the boss does not attack" looked
+// like. The model is untouched; only what the world collides with shrinks.
+const MAX_HITBOX_WIDTH = 1.2;
+const MAX_HITBOX_HEIGHT = 2.6;
 
 /**
  * A living creature: an Entity driven by a small state machine (idle,
@@ -14,7 +28,22 @@ const WANDER_CHANGE_INTERVAL = 3.5;
  */
 export class Mob extends Entity {
   constructor(species) {
-    super({ width: species.bodyType === 'boss' ? 2.4 : 0.7, height: species.bodyType === 'boss' ? 4.2 : (species.bodyType === 'biped' ? 1.9 : 1.0), maxHealth: species.maxHealth });
+    const bodyWidth = species.bodyType === 'boss' ? 2.4 : 0.7;
+    const bodyHeight = species.bodyType === 'boss' ? 4.2
+      : species.bodyType === 'biped' ? 1.9 : 1.0;
+    super({
+      width: Math.min(bodyWidth, MAX_HITBOX_WIDTH),
+      height: Math.min(bodyHeight, MAX_HITBOX_HEIGHT),
+      maxHealth: species.maxHealth
+    });
+    // What the creature looks like, as opposed to what the world collides
+    // with: the health bar floats over the model, and reach is measured from
+    // the model's edge.
+    this.bodyWidth = bodyWidth;
+    this.bodyHeight = bodyHeight;
+    // One block of free step, so ordinary terrain is walkable without the
+    // hop-when-stuck below having to do all the work.
+    this.stepHeight = 1.02;
     this.species = species;
     this.state = 'idle';
     this._wanderTimer = 0;
@@ -29,7 +58,7 @@ export class Mob extends Entity {
     // floating one over its head would only be in the way of the fight.
     if (!species.boss) {
       this.healthBar = createHealthBar(species.bodyType === 'biped' ? 1.1 : 1);
-      this.healthBar.position.y = this.height + 0.25;
+      this.healthBar.position.y = this.bodyHeight + 0.25;
       this.mesh.add(this.healthBar);
     }
     this.id = `${species.id}-${Math.random().toString(36).slice(2, 9)}`;
@@ -42,8 +71,11 @@ export class Mob extends Entity {
     if (this._attackCooldown > 0) this._attackCooldown -= dt;
     if (this._fleeTimer > 0) this._fleeTimer -= dt;
 
+    // Reach is measured from the edge of the body, not from its centre, or a
+    // creature twice as wide would have to overlap the player to land a hit.
+    const reach = ATTACK_REACH + this.bodyWidth / 2;
     if (this.species.hostile && this._fleeTimer <= 0 && distToPlayer < this.species.aggroRange && player.alive) {
-      this.state = distToPlayer < ATTACK_RANGE ? 'attack' : 'chase';
+      this.state = distToPlayer < reach ? 'attack' : 'chase';
     } else if (!this.species.hostile && this._fleeTimer > 0) {
       this.state = 'flee';
     } else {
@@ -81,14 +113,24 @@ export class Mob extends Entity {
     this.velocity.x = moveX * horizontalSpeed * (this.state === 'attack' ? 0.2 : 1);
     this.velocity.z = moveZ * horizontalSpeed * (this.state === 'attack' ? 0.2 : 1);
 
-    const wasBlocked = this.onGround && Math.abs(this.velocity.x) < 0.01 && Math.abs(this.velocity.z) < 0.01 && (moveX !== 0 || moveZ !== 0);
-    if (wasBlocked) this._stuckTimer += dt; else this._stuckTimer = 0;
-    if (this._stuckTimer > 0.15 && this.onGround) {
-      this.velocity.y = 7.5;
-      this._stuckTimer = 0;
-    }
+    const wantsToMove = moveX !== 0 || moveZ !== 0;
+    const fromX = this.position.x, fromZ = this.position.z;
 
     this.physicsStep(dt, world);
+
+    // Whether it is stuck can only be known afterwards. This used to be
+    // decided from the velocity that had just been assigned two lines above,
+    // which is never zero while the creature is trying to move — so the
+    // condition was never true and this jump had never once fired. Ledges
+    // taller than a step (a two-block bank, a wall) stopped every mob in the
+    // game permanently, the Warden included.
+    const travelled = Math.hypot(this.position.x - fromX, this.position.z - fromZ);
+    if (wantsToMove && travelled < horizontalSpeed * dt * 0.25) this._stuckTimer += dt;
+    else this._stuckTimer = 0;
+    if (this._stuckTimer > 0.2 && this.onGround) {
+      this.velocity.y = 8.4; // enough to clear two blocks
+      this._stuckTimer = 0;
+    }
 
     if (this.mesh) {
       this.mesh.position.copy(this.position);

@@ -17,6 +17,10 @@ export class Entity {
     this.velocity = new THREE.Vector3();
     this.width = width;
     this.height = height;
+    // How high a ledge this entity can walk up without jumping. Zero for the
+    // player, who has a jump key; mobs set it so a single block of terrain
+    // does not stop them dead (see Mob).
+    this.stepHeight = 0;
     this.onGround = false;
     this.inWater = false;
     this.maxHealth = maxHealth;
@@ -74,6 +78,7 @@ export class Entity {
       this.position[axis] += step;
       const box = this.aabbAt(this.position);
       if (this._collidesWorld(world, box)) {
+        if (axis !== 'y' && this._tryStepUp(world, axis, step)) continue;
         this.position[axis] -= step;
         if (axis === 'y') {
           if (this.velocity.y < 0) this.onGround = true;
@@ -85,6 +90,22 @@ export class Entity {
       }
     }
     if (axis === 'y' && delta > 0) this.onGround = false;
+  }
+
+  /**
+   * Walks up a low ledge instead of stopping against it. Without this the
+   * only way over a single raised block is a jump, and the wider the entity
+   * the more of the world counts as a wall: the Cinder Warden's box spans
+   * three block columns, so ordinary terrain pinned it in place two blocks
+   * from the player and it never got close enough to swing.
+   */
+  _tryStepUp(world, axis, step) {
+    if (this.stepHeight <= 0 || !this.onGround) return false;
+    const lifted = { x: this.position.x, y: this.position.y + this.stepHeight, z: this.position.z };
+    if (this._collidesWorld(world, this.aabbAt(lifted))) return false;
+    // Only worth climbing onto something we can then stand on.
+    this.position.y = lifted.y;
+    return true;
   }
 
   _collidesWorld(world, box) {

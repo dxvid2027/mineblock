@@ -262,7 +262,11 @@ export class EntityManager {
 
     let best = null, bestDist = Infinity;
     for (const mob of this.mobs) {
-      const toMob = new THREE.Vector3(mob.position.x - camera.position.x, mob.position.y + mob.height * 0.5 - camera.position.y, mob.position.z - camera.position.z);
+      // Aim at the middle of the body the player can see, not the middle of
+      // the smaller box the world collides with — on the Warden those are
+      // nearly a block apart, and the crosshair follows the model.
+      const aimY = mob.position.y + (mob.bodyHeight ?? mob.height) * 0.5;
+      const toMob = new THREE.Vector3(mob.position.x - camera.position.x, aimY - camera.position.y, mob.position.z - camera.position.z);
       const dist = toMob.length();
       if (dist > 4.5 || dist > blockDist) continue;
       const angle = toMob.normalize().angleTo(forward);
