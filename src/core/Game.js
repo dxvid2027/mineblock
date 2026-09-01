@@ -66,7 +66,14 @@ const LAIRS = {
   eternal_rift: {
     landmark: 'ruined_fortress', guardian: 'eternal_titan', label: 'Ruined Fortress',
     needs: 'attunement',
-    arrival: 'Something enormous is asleep in this place. You cannot yet tell where.',
+    // Before the player is attuned there is no bearing to the Titan — but
+    // there has to be a bearing to *something*, or arriving in the Rift means
+    // wandering a dimension the size of the Overworld with no lead at all.
+    // So the signpost points at the nearest Boss Outpost instead: killing
+    // what stands on one is one of the two ways to become attuned, which
+    // makes it the right first destination.
+    beforeAttuned: { landmark: 'titan_outpost', label: 'Boss Outpost' },
+    arrival: 'Something enormous is asleep here. Find what guards the outposts, and it will tell you where.',
     near: 'The fortress ahead is breathing.',
     wake: 'The Eternal Titan stands up.'
   }
@@ -505,12 +512,20 @@ export class Game {
    * answer. He wakes when you come close and stays awake until one of you
    * falls.
    */
-  /** The lair entry for the dimension the player is standing in, or null. */
+  /**
+   * What the player is currently working toward in this dimension, or null.
+   * Returns the lair itself once it is unlocked, and its stand-in before
+   * that — the Rift points at a Boss Outpost until the Titan is known.
+   */
   _currentLair() {
     const lair = LAIRS[this.world.dimensionId];
     if (!lair) return null;
     if (this.defeated[lair.guardian]) return null;
-    if (lair.needs === 'attunement' && !this.riftAttuned) return null;
+    if (lair.needs === 'attunement' && !this.riftAttuned) {
+      // A stand-in has a bearing but no guardian to wake: walking to an
+      // outpost should not summon the Titan.
+      return lair.beforeAttuned ? { ...lair.beforeAttuned, guardian: null } : null;
+    }
     return lair;
   }
 
@@ -522,7 +537,7 @@ export class Game {
    */
   _updateBossWatch(dt) {
     const lair = this._currentLair();
-    if (!lair || this.entities.bossAlive || this.entities.mobs.some((m) => m.species.id === lair.guardian)) {
+    if (!lair || (lair.guardian && (this.entities.bossAlive || this.entities.mobs.some((m) => m.species.id === lair.guardian)))) {
       this._lairTarget = null;
       return;
     }
@@ -542,13 +557,16 @@ export class Game {
     if (distance > BOSS_WAKE_DISTANCE) {
       // One warning, the first time the lair comes within reach.
       this._hinted = this._hinted ?? {};
-      if (distance < BOSS_HINT_DISTANCE && !this._hinted[lair.guardian]) {
+      if (lair.near && distance < BOSS_HINT_DISTANCE && !this._hinted[lair.guardian]) {
         this._hinted[lair.guardian] = true;
         globalEvents.emit('ui:toast', lair.near);
       }
       return;
     }
 
+    // A stand-in destination is a signpost only — the outpost's own guardian
+    // is placed by _updateGuardedLandmarks, not here.
+    if (!lair.guardian) return;
     const spot = this._findLairSpawn(found);
     if (!spot) return; // the landmark's chunks are not loaded yet; try again shortly
     this.entities.spawnMob(lair.guardian, spot);

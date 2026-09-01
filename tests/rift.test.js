@@ -16,6 +16,7 @@ import { RIFT_BIOMES } from '../src/world/Biomes.js';
 import { MEGA_STRUCTURES } from '../src/world/MegaStructures.js';
 import { STRUCTURES } from '../src/world/Structures.js';
 import { Chunk, CHUNK_HEIGHT } from '../src/world/Chunk.js';
+import { readFileSync } from 'node:fs';
 
 registerBlockItems();
 
@@ -182,4 +183,27 @@ test('the Titan pays out, and its trophy cannot be obtained any other way', () =
     'the endgame amulet should beat the mid-game one');
   const recipe = RECIPES.find((r) => r.id === 'eternal_sigil');
   assert.ok(recipe.ingredients.some((i) => i.id === 'titan_heart'), 'the Sigil should cost a Titan Heart');
+});
+
+test('the Rift always offers a destination, before and after attunement', () => {
+  // Arriving in the Rift with no bearing at all would mean searching a
+  // dimension the size of the Overworld on foot. Before the player knows
+  // where the Titan is, the signpost points at a Boss Outpost — because
+  // killing what stands on one is how you find out.
+  const source = readFileSync(new URL('../src/core/Game.js', import.meta.url), 'utf-8');
+  const rift = source.slice(source.indexOf('eternal_rift: {'), source.indexOf('};', source.indexOf('eternal_rift: {')));
+  assert.match(rift, /beforeAttuned/, 'the Rift has no stand-in destination before attunement');
+  assert.match(rift, /titan_outpost/, 'the stand-in should be a Boss Outpost');
+
+  // And an outpost has to have something on it worth killing.
+  const outpost = MEGA_STRUCTURES.find((m) => m.id === 'titan_outpost');
+  assert.ok(outpost, 'the Boss Outpost landmark is missing');
+  assert.equal(outpost.guardian, 'riftbound_colossus');
+  assert.ok(CREATURES[outpost.guardian]?.miniBoss, 'its guardian should be a mini-boss');
+
+  // Both routes to attunement must exist: the kill, and the craftable compass.
+  const compass = RECIPES.find((r) => r.id === 'rift_compass');
+  assert.ok(compass, 'the Riftfinder cannot be crafted');
+  assert.ok(CREATURES.riftbound_colossus.drops.some((d) => d.id === 'rift_compass'),
+    'the Colossus should also be able to drop one');
 });
