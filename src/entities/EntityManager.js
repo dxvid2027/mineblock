@@ -66,25 +66,40 @@ export class EntityManager {
     scene.add(this.group);
     this._spawnTimer = 0;
     this._attackCooldown = 0;
-    this.bossAlive = false;
-    this.boss = null;
 
     this._offDrop = globalEvents.on('item:drop', ({ id, count, position, ...options }) => this.spawnDrop(id, count, position, options));
+  }
+
+  /**
+   * The creature the wide bar at the top of the screen belongs to: a boss if
+   * one is on the field, otherwise a mini-boss. Derived rather than stored,
+   * because a stored flag has to be cleared on every path a creature can
+   * leave by — death, despawn, dimension change — and missing one of those
+   * left the game believing in a Warden that no longer existed.
+   */
+  get boss() {
+    let best = null;
+    for (const mob of this.mobs) {
+      if (!mob.alive || !(mob.species.boss || mob.species.miniBoss)) continue;
+      if (!best || (mob.species.boss && !best.species.boss)) best = mob;
+    }
+    return best;
+  }
+
+  /** Whether a true boss — not a mini-boss — is currently in the world. */
+  get bossAlive() {
+    return this.mobs.some((mob) => mob.alive && mob.species.boss);
   }
 
   setWorld(world) {
     this.world = world;
     for (const m of this.mobs) { this.group.remove(m.mesh); disposeMobMesh(m.mesh); }
     for (const d of this.drops) this.group.remove(d.mesh);
+    // Changing dimension takes every mob with it, the boss included. Both
+    // bossAlive and boss read straight off this list, so emptying it is the
+    // whole job.
     this.mobs = [];
     this.drops = [];
-    // Changing dimension takes every mob with it, the boss included. Leaving
-    // this flag set left the game believing a Warden that no longer existed
-    // was still out there: he could never spawn again, so a player who
-    // stepped back through the portal for a moment could not finish the
-    // game, and the boss bar kept tracking a mob that had been torn down.
-    this.bossAlive = false;
-    this.boss = null;
   }
 
   spawnDrop(itemId, count, position, options) {
@@ -101,7 +116,6 @@ export class EntityManager {
     mob.position.set(position.x, position.y, position.z);
     this.group.add(mob.mesh);
     this.mobs.push(mob);
-    if (species.boss) { this.bossAlive = true; this.boss = mob; }
     return mob;
   }
 
@@ -204,7 +218,13 @@ export class EntityManager {
         this._killMob(mob, i);
         continue;
       }
-      if (dist > DESPAWN_DIST && !mob.species.boss) {
+      // Bosses and mini-bosses stay put. They are placed deliberately, at a
+      // landmark the player walked to, and the distance that wakes one (34)
+      // sits close enough under this one that a few blocks of height
+      // difference culled a Riftbound Colossus on the same frame it appeared
+      // — you arrived at the outpost and nobody was there.
+      const permanent = mob.species.boss || mob.species.miniBoss;
+      if (dist > DESPAWN_DIST && !permanent) {
         this.group.remove(mob.mesh);
         disposeMobMesh(mob.mesh);
         this.mobs.splice(i, 1);
@@ -221,11 +241,8 @@ export class EntityManager {
     this.group.remove(mob.mesh);
     disposeMobMesh(mob.mesh);
     this.mobs.splice(index, 1);
-    if (mob.species.boss) {
-      mob.boss?.dismiss(); // the escort does not outlive what called it up
-      this.bossAlive = false;
-      this.boss = null;
-    }
+    // The escort does not outlive whatever called it up.
+    if (mob.species.boss) mob.boss?.dismiss();
     globalEvents.emit('entity:mobKilled', mob.species);
   }
 

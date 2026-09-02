@@ -188,6 +188,10 @@ export class HUD {
     const bar = this.el.querySelector('#hud-bossbar');
     if (!boss || !boss.alive) { bar.style.display = 'none'; return; }
     bar.style.display = 'block';
+    // Mini-bosses get the same bar, narrower, so the Spire Sentinel and the
+    // Riftbound Colossus read as real fights without being mistaken for the
+    // end of the game.
+    bar.classList.toggle('minor', !boss.species.boss);
     // A phased fight names the phase it is in, so the rules changing is
     // legible rather than something the player has to infer from being hit
     // harder — see entities/BossBehaviour.js.

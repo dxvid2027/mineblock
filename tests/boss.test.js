@@ -19,6 +19,7 @@ import { EntityManager } from '../src/entities/EntityManager.js';
 import { MEGA_STRUCTURES } from '../src/world/MegaStructures.js';
 import { DIMENSIONS } from '../src/dimensions/Dimensions.js';
 import { cardinalTowards } from '../src/core/compass.js';
+import { readFileSync } from 'node:fs';
 
 registerBlockItems();
 
@@ -33,8 +34,6 @@ function headlessEntities() {
   const entities = Object.create(EntityManager.prototype);
   entities.mobs = [];
   entities.drops = [];
-  entities.bossAlive = false;
-  entities.boss = null;
   entities.group = { add() {}, remove() {} };
   return entities;
 }
@@ -74,8 +73,7 @@ test('leaving a dimension forgets the boss that left with it', () => {
   // Just enough of a mesh for the teardown path to walk over.
   const mesh = { traverse() {}, userData: {} };
   entities.mobs.push({ species: CREATURES.cinder_warden, alive: true, mesh });
-  entities.bossAlive = true;
-  entities.boss = entities.mobs[0];
+  assert.equal(entities.bossAlive, true);
 
   entities.setWorld({});
 
@@ -83,6 +81,43 @@ test('leaving a dimension forgets the boss that left with it', () => {
   assert.equal(entities.bossAlive, false,
     'a Warden who no longer exists must not block the next one from spawning — this made the game uncompletable');
   assert.equal(entities.boss, null, 'and the boss bar must not track a mob that was torn down');
+});
+
+test('the boss bar picks the right creature, and mini-bosses get one too', () => {
+  const entities = headlessEntities();
+  assert.equal(entities.boss, null, 'nothing on the field, nothing on the bar');
+
+  // A mini-boss is worth a bar: the Spire Sentinel and the Riftbound Colossus
+  // are real fights, and before this only true bosses had one.
+  const sentinel = { species: CREATURES.spire_sentinel, alive: true, mesh: null };
+  entities.mobs.push(sentinel);
+  assert.equal(entities.boss, sentinel);
+  assert.equal(entities.bossAlive, false, 'a mini-boss must not read as a boss to the lair logic');
+
+  // With both on the field the real boss wins the bar.
+  const titan = { species: CREATURES.eternal_titan, alive: true, mesh: null };
+  entities.mobs.push(titan);
+  assert.equal(entities.boss, titan);
+  assert.equal(entities.bossAlive, true);
+
+  // And a corpse holds neither.
+  titan.alive = false; sentinel.alive = false;
+  assert.equal(entities.boss, null);
+  assert.equal(entities.bossAlive, false);
+});
+
+test('a mini-boss is never culled for being far away', () => {
+  // Spawning happens at 34 blocks and the despawn radius is 44, measured in
+  // three dimensions — close enough that a hill between the player and a
+  // Boss Outpost culled the Colossus on the frame it appeared.
+  for (const id of ['spire_sentinel', 'riftbound_colossus']) {
+    assert.equal(CREATURES[id].miniBoss, true, `${id} should be flagged as a mini-boss`);
+  }
+  const source = readFileSync(new URL('../src/entities/EntityManager.js', import.meta.url), 'utf-8');
+  const despawn = source.slice(source.indexOf('DESPAWN_DIST &&'), source.indexOf('DESPAWN_DIST &&') + 60);
+  assert.match(despawn, /permanent/, 'the despawn check still culls anything that is not a plain boss');
+  assert.match(source, /const permanent = mob\.species\.boss \|\| mob\.species\.miniBoss/,
+    'mini-bosses must be exempt from despawning');
 });
 
 test('the Ember Expanse landmark is the Warden lair, and it is always findable', () => {

@@ -55,9 +55,10 @@ export class Mob extends Entity {
     this._animTime = Math.random() * 10; // desync identical species
     this._hurtFlash = 0;
     this.mesh = buildMobMesh(species);
-    // The boss gets the wide bar across the top of the screen instead; a
-    // floating one over its head would only be in the way of the fight.
-    if (!species.boss) {
+    // Anything that gets the wide bar across the top of the screen — bosses
+    // and mini-bosses alike — does not also get a floating one over its head:
+    // two bars for one creature is just noise in the middle of a fight.
+    if (!species.boss && !species.miniBoss) {
       this.healthBar = createHealthBar(species.bodyType === 'biped' ? 1.1 : 1);
       this.healthBar.position.y = this.bodyHeight + 0.25;
       this.mesh.add(this.healthBar);

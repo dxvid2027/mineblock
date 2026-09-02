@@ -569,6 +569,15 @@ button {
 }
 .boss-fill.low { background: linear-gradient(180deg, #d1544a, #8f2a22); }
 
+/* A mini-boss gets the same bar at two thirds the width and in a cooler
+   colour, so a Spire Sentinel is clearly a real fight and just as clearly
+   not the end of the game. */
+.boss-bar.minor { width: min(380px, 52vw); }
+.boss-bar.minor .boss-name { font-size: 13px; }
+.boss-bar.minor .boss-track { height: 10px; }
+.boss-bar.minor .boss-fill { background: linear-gradient(180deg, #7f8fd0, #43508f); }
+.boss-bar.minor .boss-fill.low { background: linear-gradient(180deg, #d1544a, #8f2a22); }
+
 /* ---------- Item tooltip stats ---------- */
 .inv-tooltip .stats {
   margin-top: 7px;
